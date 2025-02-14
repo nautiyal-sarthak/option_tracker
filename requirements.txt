@@ -1,0 +1,7 @@
+Flask
+pandas
+requests
+yfinance
+flask-sqlalchemy
+
+

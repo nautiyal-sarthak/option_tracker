@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+    <header>
+            <img src="static/images/image.jpg" alt="Logo" class="logo">
+        <h1>Options Tracker</h1>
+    </header>
+
+    <div class="content">
+        <!-- STATS SECTION -->
+        <div class="stats-container">
+            <div class="section">
+                <h2>Total Premium</h2>
+                <p class="{{ 'profit' if total_premium_collected >= 0 else 'loss' }}">
+                    {{ total_premium_collected }}
+                </p>
+            </div>
+            <div class="section">
+                <h2>Total Profit</h2>
+                <p class="{{ 'profit' if total_profit >= 0 else 'loss' }}">
+                    {{ total_profit }}
+                </p>
+            </div>
+            <div class="section">
+                <h2>P/L of sales</h2>
+                <p class="{{ 'profit' if p_l_stock >= 0 else 'loss' }}">
+                    {{ p_l_stock }}
+                </p>
+            </div>
+            <div class="section">
+                <h2>Win/Loss</h2>
+                <p class="profit">Total Wins: {{ total_wins }}</p>
+                <p class="loss">Total Losses: {{ total_loss }}</p>
+                <p>
+                    Win %: {{ win_percentage }}
+                </p>
+            </div>
+            <div class="section">
+                <h2>Total open trades</h2>
+                <p>
+                    {{ total_open_trades }}
+                </p>
+            </div>
+        </div>
+
+        <!-- ACCOUNT DETAILS SECTION -->
+        {% for account in account_summary %}
+        <div class="account">
+            <div class="account-header" onclick="toggleAccountDetails(this)">
+                <div class="left-section">
+                    <span>Account: {{ account.accountId }}</span>
+                </div>
+                <div class="right-section">
+                    <span>Premium:</span>
+                    <span class="{{ 'profit' if account.total_premium_collected >= 0 else 'loss' }}">
+                        {{ account.total_premium_collected }}
+                    </span>
+                    <span>| Total Profit:</span>
+                    <span class="{{ 'profit' if account.total_profit >= 0 else 'loss' }}">
+                        {{ account.total_profit }}
+                    </span>
+                    <span>| Stock Sale:</span>
+                    <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
+                        {{ account.stock_sale_pl }}
+                    </span>
+                    <span>| W/L:</span>
+                    <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
+                        ({{ account.total_wins }} / {{ account.total_loss }})
+                    </span>
+                    <span>| Open trades:</span>
+                    <span>
+                        {{ account.total_open_trades }}
+                    </span>
+                </div>
+
+            </div>
+            <div class="account-details">
+                <ul>
+                    <div class="stock-container">
+                        {% for stock in account_stk_merge[account.accountId] %}
+                        <div class="stock-card">
+                            <a href="/account/{{account.accountId}}/symbol/{{stock.symbol}}" class="stock-symbol">
+                                <strong>{{ stock.symbol }}</strong>
+                            </a>
+                            <div class="stock-details">
+                                <span>
+                                    Premium collected: <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }}</span>
+                                </span>
+                                <span>total profit: <span class="{{ 'profit' if stock.total_profit >= 0 else 'loss' }}">{{stock.total_profit}} </span></span>
+                                <span>stock sale P/L: <span class="{{ 'profit' if stock.stock_sale_pl >= 0 else 'loss' }}">{{stock.stock_sale_pl}}</span></span>
+                                <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_loss }}</span> ({{ stock.w_L }}%)</span>
+                                <span>Stocks Qty: {{ stock.total_stock_quantity }}</span>
+                                <span>Open trades: {{ stock.total_open_trades }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                </ul>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <script>
+        function toggleAccountDetails(element) {
+            var details = element.nextElementSibling;
+            details.style.display = details.style.display === "block" ? "none" : "block";
+        }
+    </script>
+    
+
+</body>
+</html>
+          
