@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script> 
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/yadcf/0.9.4/jquery.dataTables.yadcf.css"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <img src="static/images/image.jpg" alt="Logo" class="logo">
+        <h1>Options Tracker</h1>
+        <a href="/" class="home-button">Home</a>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+        <h2>Account: {{ account_id }} | Stock: {{ symbol }}</h2>
+
+        <!-- STATS SECTION -->
+        <div class="stats-container">
+            <div class="card">
+                <h4>Total Premium</h4>
+                <p class="{{ 'profit' if stk_smry.total_premium_collected >= 0 else 'loss' }}">
+                    {{ stk_smry.total_premium_collected }}
+                </p>
+            </div>
+            <div class="card">
+                <h4>Total Profit</h4>
+                <p class="{{ 'profit' if stk_smry.total_profit >= 0 else 'loss' }}">
+                    {{ stk_smry.total_profit }}
+                </p>
+            </div>
+            <div class="card">
+                <h4>P/L of Sales</h4>
+                <p class="{{ 'profit' if stk_smry.stock_sale_pl >= 0 else 'loss' }}">
+                    {{ stk_smry.stock_sale_pl }}
+                </p>
+            </div>
+            <div class="card">
+                <h4>Total Stocks Assigned</h4>
+                <p>{{ stk_smry.net_quantity }}</p>
+            </div>
+            <div class="card">
+                <h4>Win/Loss</h4>
+                <p>Total Wins: {{ stk_smry.total_wins }}</p>
+                <p>Total Losses: {{ stk_smry.total_loss }}</p>
+                <p class="{{ 'profit' if stk_smry.w_L >= 50 else 'loss' }}">
+                    Win Percentage: {{ stk_smry.w_L }}%
+                </p>
+            </div>
+            <div class="card">
+                <h4>Avg Cost Basis</h4>
+                <p>{{ stk_smry.acb}}</p>
+            </div>
+        </div>
+
+        <!-- open Trades Table -->
+        <div class="table-container">
+            <h3>All open Trades</h3>
+            <table id="open-data-table" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        {% for col in open_cols %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in open_data %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Closed Trades Table -->
+        <div class="table-container">
+            <h3>All Closed Trades</h3>
+            <table id="closed-data-table" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        {% for col in closed_cols %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in closed_data %}
+    
+                    <tr class="{{ 'win' if row[13] else 'loss_row'}}">
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <script>
+            $(document).ready(function() {
+                $('#open-data-table, #closed-data-table').DataTable({
+                    "paging": true,
+                    "lengthChange": false,
+                    "searching": true,
+                    "ordering": true,
+                    "info": true,
+                    "autoWidth": false,
+                    "order": [[1, "desc"]] // Default sort by the second column (assuming it's trade open date)
+                });
+            });
+        </script>
+        
+        
+    </div>
+
+</body>
+</html>
