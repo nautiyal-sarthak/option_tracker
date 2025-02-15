@@ -219,7 +219,11 @@ def process_wheel_trades(df):
     df = pd.DataFrame(processed_trades).transpose()
     df = df.fillna(0)
     # is open trade
-    df['is_closed'] =  df['number_of_contracts_sold'] == (df['number_of_buyback'] + df['number_of_assign_contract'] + df['number_of_sold_contract']) 
+    today = pd.Timestamp.today().normalize()
+    df['is_closed'] =  ((df['number_of_contracts_sold'] == (df['number_of_buyback'] + df['number_of_assign_contract'] + df['number_of_sold_contract'])) 
+                        | 
+                        (df['expiry_date'] < today)) 
+     
     df['is_win'] = (df['net_premium'] > 0) & (df['number_of_assign_contract'] == 0) & (df['number_of_sold_contract'] == 0) & (df['is_closed'] == True)
 
     return df
