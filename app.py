@@ -3,10 +3,9 @@ from brokers.broker_ibkr import IBKRBroker
 import pandas as pd
 from utility import *
 import logging
-import json
 from collections import defaultdict
-import math
 from stock  import *
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
