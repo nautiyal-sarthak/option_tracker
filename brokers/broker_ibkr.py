@@ -79,17 +79,23 @@ class IBKRBroker(BaseBroker):
                                             stock = trade_ele.attrib["underlyingSymbol"]
                                             option_id = trade_ele.attrib["symbol"]
                                         
-                                        obj = Trade(option_id,trade_ele.attrib["tradeDate"], trade_ele.attrib["accountId"], 
-                                                stock, trade_ele.attrib["putCall"], trade_ele.attrib["buySell"],
-                                                trade_ele.attrib["openCloseIndicator"], trade_ele.attrib["strike"], 
-                                                trade_ele.attrib["expiry"], trade_ele.attrib["quantity"], 
-                                                trade_ele.attrib["tradePrice"], trade_ele.attrib["ibCommission"],  trade_ele.attrib["assetCategory"])
+                                        obj = Trade(
+                                                option_id,trade_ele.attrib["tradeDate"], 
+                                                trade_ele.attrib["accountId"], 
+                                                stock, trade_ele.attrib["putCall"], 
+                                                trade_ele.attrib["buySell"],
+                                                trade_ele.attrib["openCloseIndicator"], 
+                                                trade_ele.attrib["strike"], 
+                                                trade_ele.attrib["expiry"], 
+                                                trade_ele.attrib["quantity"], 
+                                                trade_ele.attrib["tradePrice"], 
+                                                trade_ele.attrib["ibCommission"],  
+                                                trade_ele.attrib["assetCategory"]
+                                            )
                                     
                                         parsed_data.append(obj)
          
         return parsed_data
-
-
 
     def get_data(self):
         if self.is_test:

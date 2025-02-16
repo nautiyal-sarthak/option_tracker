@@ -44,7 +44,7 @@ def stock_details_inner(account_id, symbol):
     # get summery data
     processed_data_global_stk_grp = stock_data.groupby(['accountId','symbol']).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
-            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[stock_data['is_closed']].count()),
+            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[(stock_data['is_closed']) & (stock_data['callorPut'].isin(["Call", "Put"]))].count()),
             total_wins=pd.NamedAgg(column='is_win', aggfunc=lambda x: x[stock_data['is_closed']].sum()),  # Conditional sum
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
             total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
@@ -65,16 +65,21 @@ def stock_details_inner(account_id, symbol):
                                                         (processed_data_global_stk_grp['total_premium_collected'] / 100)) /
                                                         processed_data_global_stk_grp['net_quantity']
                                                     )
+    processed_data_global_stk_grp['acb'] = processed_data_global_stk_grp['acb'].round(2)
 
 
-    stock_data = stock_data[['callorPut','trade_open_date','expiry_date','strike_price','number_of_contracts_sold','premium_per_contract','net_buyback_price','buyback_date','net_premium','assign_quantity','assign_date','sold_quantity','sold_date','is_closed','is_win']]
+    stock_data = stock_data[['callorPut','buySell','trade_open_date','expiry_date','strike_price','number_of_contracts_sold','premium_per_contract','net_buyback_price','number_of_buyback','buyback_date','net_premium','assign_quantity','assign_price_per_share','assign_date','sold_quantity','sold_price_per_share','sold_date','is_closed','is_win']]
 
-    stock_data_open = stock_data[stock_data["is_closed"] == False]
-    stock_data_close = stock_data[stock_data["is_closed"] == True]
+    stock_data_open = stock_data[(stock_data["is_closed"] == False) & (stock_data['callorPut'].isin(["Call", "Put"]))]
+    stock_data_close = stock_data[(stock_data["is_closed"] == True) & (stock_data['callorPut'].isin(["Call", "Put"]))]
 
     stock_data_open = stock_data_open.drop(columns=['is_closed','is_win'])
     stock_data_close = stock_data_close.drop(columns=['is_closed'])
     stock_data_close = stock_data_close.round(2)
+
+
+    stocks_purchased_sold = stock_data[~(stock_data['callorPut'].isin(["Call", "Put"]))]
+    stocks_purchased_sold = stocks_purchased_sold[['buySell','assign_quantity','assign_date','assign_price_per_share','sold_quantity','sold_price_per_share','sold_date']]
 
 
     
@@ -84,7 +89,9 @@ def stock_details_inner(account_id, symbol):
                            symbol=symbol,
                            stk_smry=stk_smry,
                            open_cols=stock_data_open.columns , open_data=stock_data_open.values.tolist(),
-                           closed_cols=stock_data_close.columns, closed_data=stock_data_close.values.tolist())
+                           closed_cols=stock_data_close.columns, closed_data=stock_data_close.values.tolist(),
+                           stocks_purchased_sold_cols = stocks_purchased_sold.columns,
+                           stocks_purchased_sold_data=stocks_purchased_sold.values.tolist())
 
 
 @app.route('/')
@@ -93,7 +100,7 @@ def index():
     global raw_df
 
     broker_name = 'IBKR'
-    is_test = False
+    is_test = True
     
     if broker_name == 'IBKR':
         broker = IBKRBroker(is_test)
@@ -112,7 +119,7 @@ def index():
         ##################account info############################
         processed_data_global_account_grp = processed_data.groupby('accountId').agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
-            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[processed_data['is_closed']].count()),
+            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[(processed_data['is_closed']) & (processed_data['callorPut'].isin(["Call", "Put"]))].count() ),
             total_open_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[processed_data['is_closed']==False].count()),
             total_wins=pd.NamedAgg(column='is_win', aggfunc=lambda x: x[processed_data['is_closed']].sum()),  # Conditional sum
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
@@ -139,7 +146,7 @@ def index():
         # get the account-stock level info
         processed_data_global_stk_grp = processed_data.groupby(['accountId','symbol']).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
-            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[processed_data['is_closed']].count()),
+            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[(processed_data['is_closed']) & (processed_data['callorPut'].isin(["Call", "Put"]))].count()),
             total_wins=pd.NamedAgg(column='is_win', aggfunc=lambda x: x[processed_data['is_closed']].sum()),  # Conditional sum
             total_open_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[processed_data['is_closed']==False].count()),
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
