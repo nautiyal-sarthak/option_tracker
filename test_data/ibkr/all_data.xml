@@ -4,12 +4,12 @@
 <Trades>
       
         <!-- buy back put -->
-        <Trade tradeDate="20240210" accountId="U13757004" underlyingSymbol="BMO" putCall="P" openCloseIndicator="O" strike="10" expiry="20240215" quantity="-5" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
-        <Trade tradeDate="20240211" accountId="U13757004" underlyingSymbol="BMO" putCall="P" openCloseIndicator="C" strike="10" expiry="20240215" quantity="5" tradePrice="0.11" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="BUY" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
+        <Trade tradeDate="20240210" accountId="U13757004" underlyingSymbol="BMO1" putCall="P" openCloseIndicator="O" strike="10" expiry="20260215" quantity="-1" tradePrice="0.10" ibCommission="-1" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
+        <Trade tradeDate="20240211" accountId="U13757004" underlyingSymbol="BMO1" putCall="P" openCloseIndicator="C" strike="10" expiry="20260215" quantity="1" tradePrice="0.11" ibCommission="-1" assetCategory="OPT" transactionType="ExchTrade" buySell="BUY" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
         
         <!-- put assigned -->
-        <Trade tradeDate="20240213" accountId="U13757004" underlyingSymbol="BMO" putCall="P" openCloseIndicator="O" strike="20" expiry="20240217" quantity="-5" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
-        <Trade tradeDate="20240214" accountId="U13757004" underlyingSymbol="" putCall="" openCloseIndicator="C" strike="" expiry="" quantity="500" tradePrice="20" ibCommission="0" assetCategory="STK" transactionType="ExchTrade" buySell="BUY" symbol="BMO" description="TESLA INC" /> 
+        <Trade tradeDate="20240213" accountId="U13757004" underlyingSymbol="BMO" putCall="P" openCloseIndicator="O" strike="20" expiry="20240217" quantity="-1" tradePrice="0.10" ibCommission="-1" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
+        <Trade tradeDate="20240214" accountId="U13757004" underlyingSymbol="" putCall="" openCloseIndicator="C" strike="" expiry="" quantity="100" tradePrice="20" ibCommission="-1" assetCategory="STK" transactionType="ExchTrade" buySell="BUY" symbol="BMO" description="TESLA INC" /> 
 
         <!-- put assigned + buy back -->
         <Trade tradeDate="20240213" accountId="U13757004" underlyingSymbol="ABC" putCall="P" openCloseIndicator="O" strike="20" expiry="20240217" quantity="-6" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
@@ -22,13 +22,14 @@
         <Trade tradeDate="20240216" accountId="U13757004" underlyingSymbol="BMO" putCall="C" openCloseIndicator="C" strike="10" expiry="20240218" quantity="5" tradePrice="0.05" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="BUY" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
 
         <!-- call STOCKS SOLD -->
-        <Trade tradeDate="20240217" accountId="U13757004" underlyingSymbol="BMO" putCall="C" openCloseIndicator="O" strike="20" expiry="20240219" quantity="-5" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
-        <Trade tradeDate="20240218" accountId="U13757004" underlyingSymbol="" putCall="" openCloseIndicator="C" strike="" expiry="" quantity="500" tradePrice="20" ibCommission="0" assetCategory="STK" transactionType="ExchTrade" buySell="SELL" symbol="BMO" description="TESLA INC" />
+        <!-- <Trade tradeDate="20240217" accountId="U13757004" underlyingSymbol="BMO" putCall="C" openCloseIndicator="O" strike="20" expiry="20240219" quantity="-5" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
+        <Trade tradeDate="20240218" accountId="U13757004" underlyingSymbol="" putCall="" openCloseIndicator="C" strike="" expiry="" quantity="500" tradePrice="20" ibCommission="0" assetCategory="STK" transactionType="ExchTrade" buySell="SELL" symbol="BMO" description="TESLA INC" /> -->
         
         <!-- call STOCKS open -->
-        <Trade tradeDate="20240220" accountId="U13757004" underlyingSymbol="BMO" putCall="C" openCloseIndicator="O" strike="20" expiry="20240225" quantity="-5" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" />
+        <!-- <Trade tradeDate="20240220" accountId="U13757004" underlyingSymbol="BMO" putCall="C" openCloseIndicator="O" strike="20" expiry="20240225" quantity="-5" tradePrice="0.10" ibCommission="0" assetCategory="OPT" transactionType="ExchTrade" buySell="SELL" symbol="BMO   240216P00123000" description="BMO 16FEB24 123 P" /> -->
 
-        
+        <!-- STOCK PURCHASE -->
+        <Trade tradeID="394735851" tradeDate="20240418" accountId="U13757004" underlyingSymbol="" putCall="" openCloseIndicator="O" strike="" expiry="" quantity="4" tradePrice="-150" ibCommission="-1" assetCategory="STK" transactionType="ExchTrade" buySell="BUY" symbol="TSLA" description="TESLA INC" />
 </Trades>
 </FlexStatement>
 </FlexStatements>

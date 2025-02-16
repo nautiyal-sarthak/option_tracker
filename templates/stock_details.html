@@ -110,10 +110,34 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Stocks Trades Table -->
+        <div class="table-container">
+            <h3>All Stock Trades</h3>
+            <table id="stocks_purchased_sold-table" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        {% for col in stocks_purchased_sold_cols %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in stocks_purchased_sold_data %}
+    
+                    <tr">
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         
         <script>
             $(document).ready(function() {
-                $('#open-data-table, #closed-data-table').DataTable({
+                $('#open-data-table, #closed-data-table, #stocks_purchased_sold-table').DataTable({
                     "paging": true,
                     "lengthChange": false,
                     "searching": true,
