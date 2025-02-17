@@ -43,60 +43,6 @@ def transform_data(df):
 
     return df
 
-def process_sold_options(options_df):
-    # create a new DF that has only the buy trades
-    df_sell = options_df[(options_df['buySell'] == 'SELL') & (options_df['openCloseIndicator'] == 'Open')]
-    df_buy = options_df[(options_df['buySell'] == 'BUY') & (options_df['openCloseIndicator'] == 'Close')]
-    
-    df_merge = df_sell.merge(df_buy,how='left', on=['accountId','symbol','expiry','strike'], suffixes=('_sell', '_buy'))
-    
-    df_merge['total_premium'] = df_merge['total_premium_sell'] + df_merge['total_premium_buy'].fillna(0)
-    df_merge['win_trade'] = df_merge['total_premium'] > 0
-    df_merge['loss_trade'] = df_merge['total_premium'] < 0
-
-    df_merge = df_merge[['accountId','symbol','expiry','strike','tradeDate_sell','tradeDate_buy','quantity_sell',
-                    'quantity_buy','total_premium_sell','total_premium_buy','total_premium','win_trade','loss_trade']]
-
-    df_open_close = df_merge.groupby(['accountId','symbol','expiry','strike','quantity_sell']).agg({'quantity_buy':'sum'}).reset_index()
-    df_open_close['is_open'] = df_open_close['quantity_sell'] != df_open_close['quantity_buy']
-    df_open_close = df_open_close[['accountId','symbol','expiry','strike','quantity_sell','is_open']]
-
-    # use df_open_close['is_open'] to mark the open trades in df_merge
-    df_merge = df_merge.merge(df_open_close,how='left', on=['accountId','symbol','expiry','strike','quantity_sell'], suffixes=('_sell', '_buy'))
-    
-    return df_merge
-
-def process_stocks(df):
-    df_grouped = df.groupby(['accountId','symbol','buySell']).agg(
-        {
-            'total_premium':'sum',
-            'quantity':'sum'
-            }
-        ).reset_index()
-    df_sell = df_grouped[(df_grouped['buySell'] == 'SELL')]
-    df_buy = df_grouped[(df_grouped['buySell'] == 'BUY')]
-
-    df_merge = df_buy.merge(df_sell,on=['accountId','symbol'],suffixes=('_buy', '_sell'),how='left')
-    df_merge['profit'] = np.where(
-        df_merge['total_premium_sell'] > 0,  
-        df_merge['total_premium_sell'] + df_merge['total_premium_buy'],  
-    0  
-)
-    df_merge['quantity'] = df_merge['quantity_buy'] - df_merge['quantity_sell'].fillna(0)
-    df_merge['acb'] = df_merge['total_premium_buy']/df_merge['quantity']
-    return df_merge
-    
-def split_df(raw_df):
-    test = process_wheel_trades(raw_df)
-    print(test)
-    stocks_df = raw_df[raw_df['assetCategory'] == 'Stock']
-    options_df = raw_df[raw_df['assetCategory'] == 'Option']
-
-    options_df = process_sold_options(options_df)
-    stocks_df = process_stocks(stocks_df)
-
-    return options_df,stocks_df
-
 def find_matching_key(target_key, lookup_dict, trade_open_date):
     if len(target_key) < 5:
         return None  # Invalid key format
@@ -290,23 +236,6 @@ def process_wheel_trades(df):
     df['is_win'] = (df['net_premium'] > 0) & (df['number_of_assign_contract'] == 0) & (df['number_of_sold_contract'] == 0) & (df['is_closed'] == True)
 
     return df
-
-def get_current_price(tickers):
-    import yfinance as yf
-
-    out = {}
-    for ticker in tickers:
-        try:
-            stock = yf.Ticker(ticker)
-            current_price = stock.history(period='1d')['Close'][0]
-            out[ticker] = current_price 
-        except:
-            out[ticker] = 0
-        
-    return out
-    
-
-    
 
     
 

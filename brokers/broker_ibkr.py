@@ -4,6 +4,8 @@ import xml.etree.ElementTree as ET
 import time
 from entity.trade import Trade
 import logging
+from database import *  
+from datetime import date, datetime
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -61,7 +63,12 @@ class IBKRBroker(BaseBroker):
         receiveUrl = requests.get(url=self.requestBase+receive_slug, params=receive_params, allow_redirects=True)
         return receiveUrl.content
     
-    def parse_data(self, data):
+    def parse_data(self, data,max_date=None):
+        if max_date is None :
+            max_date = datetime(1900, 1, 1)
+        else:
+            max_date = datetime.strptime(max_date,"%Y%m%d")
+
         root = ET.fromstring(data)
         parsed_data = []
         for FlexStatements in root:
@@ -79,31 +86,39 @@ class IBKRBroker(BaseBroker):
                                             stock = trade_ele.attrib["underlyingSymbol"]
                                             option_id = trade_ele.attrib["symbol"]
                                         
-                                        obj = Trade(
-                                                option_id,trade_ele.attrib["tradeDate"], 
-                                                trade_ele.attrib["accountId"], 
-                                                stock, trade_ele.attrib["putCall"], 
-                                                trade_ele.attrib["buySell"],
-                                                trade_ele.attrib["openCloseIndicator"], 
-                                                trade_ele.attrib["strike"], 
-                                                trade_ele.attrib["expiry"], 
-                                                trade_ele.attrib["quantity"], 
-                                                trade_ele.attrib["tradePrice"], 
-                                                trade_ele.attrib["ibCommission"],  
-                                                trade_ele.attrib["assetCategory"]
-                                            )
-                                    
-                                        parsed_data.append(obj)
+                                        if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") > max_date and datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") < datetime.today()):
+                                            obj = Trade(
+                                                    option_id,trade_ele.attrib["tradeDate"], 
+                                                    trade_ele.attrib["accountId"], 
+                                                    stock, trade_ele.attrib["putCall"], 
+                                                    trade_ele.attrib["buySell"],
+                                                    trade_ele.attrib["openCloseIndicator"], 
+                                                    trade_ele.attrib["strike"], 
+                                                    trade_ele.attrib["expiry"], 
+                                                    trade_ele.attrib["quantity"], 
+                                                    trade_ele.attrib["tradePrice"], 
+                                                    trade_ele.attrib["ibCommission"],  
+                                                    trade_ele.attrib["assetCategory"]
+                                                )
+                                        
+                                            parsed_data.append(obj)
          
         return parsed_data
 
     def get_data(self):
         if self.is_test:
             xml_data = self.get_test_data()
+            data = self.parse_data(xml_data)
         else:
             refCode = self.send_request()
             time.sleep(20)
             xml_data = self.get_statement(refCode)
+            max_date = get_max_trade_date()
+            delta_data = self.parse_data(xml_data,max_date)
+            if delta_data:
+                insert_trades(delta_data)
+            data = get_all_trades()
+
+            
         
-        data = self.parse_data(xml_data)
         return data
