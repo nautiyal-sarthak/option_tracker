@@ -5,7 +5,7 @@ from utility import *
 import logging
 from collections import defaultdict
 from stock  import *
-
+import sqlite3
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,18 +15,10 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 app = Flask(__name__)
 
+
+
 if 'global_trade_info' not in globals():
     global_trade_info = None
-
-def style_closed_trades(df):
-    def highlight_row(row):
-        if row["is_win"]:
-            return ["background-color: #d4edda"] * len(row)  # Light green for win
-        else:
-            return ["background-color: #f8d7da"] * len(row)  # Light red for loss
-
-    return df.style.apply(highlight_row, axis=1).set_table_attributes('class="table table-striped table-bordered"').to_html(escape=False)
-
 
 @app.route('/account/<account_id>/symbol/<symbol>')
 def stock_details_inner(account_id, symbol):
