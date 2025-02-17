@@ -5,13 +5,29 @@ from utility import *
 import logging
 from collections import defaultdict
 from stock  import *
-import sqlite3
+import redis
+import json
+from datetime import datetime, timedelta
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+cache = {}  # Dictionary to store data with expiry timestamps
+CACHE_EXPIRY = 5  # Cache duration in minutes
 
+def set_to_cache(key, value):
+    expiry_time = datetime.now() + timedelta(minutes=CACHE_EXPIRY)
+    cache[key] = (value, expiry_time)
 
+def get_from_cache(key):
+    if key in cache:
+        value, expiry_time = cache[key]
+        if datetime.now() < expiry_time:
+            return value  # Return if not expired
+        else:
+            del cache[key]  # Remove expired entry
+    return None  # Return None if not found or expired
 
 app = Flask(__name__)
 
@@ -91,16 +107,24 @@ def index():
     global global_trade_info
     global raw_df
 
-    broker_name = 'IBKR'
-    is_test = True
-    
-    if broker_name == 'IBKR':
-        broker = IBKRBroker(is_test)
-    else:
-        return f"Broker '{broker_name}' is not supported."
-    
     try:
-        trade_data = broker.get_data()
+        cached_data = get_from_cache("trades")
+        if cached_data:
+            print("Loaded from cache")
+            trade_data=cached_data
+        else:
+
+            broker_name = 'IBKR'
+            is_test = False
+        
+            if broker_name == 'IBKR':
+                broker = IBKRBroker(is_test)
+            else:
+                return f"Broker '{broker_name}' is not supported."    
+        
+            trade_data = broker.get_data()
+            set_to_cache("trades",trade_data)
+        
         df = pd.DataFrame([vars(trade) for trade in trade_data])
         raw_df = transform_data(df)
 
