@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 cache = {}  # Dictionary to store data with expiry timestamps
-CACHE_EXPIRY = 60  # Cache duration in minutes
+CACHE_EXPIRY = 60 * 24  # Cache duration in minutes
 
 def set_to_cache(key, value):
     expiry_time = datetime.now() + timedelta(minutes=CACHE_EXPIRY)
