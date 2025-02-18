@@ -221,6 +221,7 @@ def process_wheel_trades(df):
 
     df = pd.DataFrame(processed_trades).transpose()
     df = df.fillna(0)
+    df = df.reset_index()
     # is open trade
 
 
