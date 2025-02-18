@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 cache = {}  # Dictionary to store data with expiry timestamps
-CACHE_EXPIRY = 5  # Cache duration in minutes
+CACHE_EXPIRY = 60  # Cache duration in minutes
 
 def set_to_cache(key, value):
     expiry_time = datetime.now() + timedelta(minutes=CACHE_EXPIRY)
@@ -177,6 +177,28 @@ def index():
         processed_data_global_stk_grp['w_L'] = (processed_data_global_stk_grp['total_wins'] / processed_data_global_stk_grp['total_trades']) * 100
         processed_data_global_stk_grp['total_stock_quantity'] = processed_data_global_stk_grp['total_assign_quantity'] - processed_data_global_stk_grp['total_sold_quantity']
 
+
+        # get trade data by date
+        processed_data_by_date = processed_data.groupby(['accountId','symbol','trade_open_date']).agg(
+            total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
+            total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum')
+        ).reset_index()
+        processed_data_by_date['total_profit'] = processed_data_by_date['total_premium_collected'] + processed_data_by_date['total_stock_sale_cost']
+        processed_data_by_date['year'] = processed_data_by_date['trade_open_date'].dt.year
+        processed_data_by_date['month'] = processed_data_by_date['year'].astype(str) + "-" + processed_data_by_date['trade_open_date'].dt.month.astype(str)
+        processed_data_by_date['year_quarter'] = processed_data_by_date['trade_open_date'].dt.year.astype(str) + "-Q" + processed_data_by_date['trade_open_date'].dt.quarter.astype(str)
+
+        processed_data_by_date = processed_data_by_date[['accountId','symbol','month','year_quarter','year','total_profit']]
+         
+        processed_data_by_year = processed_data_by_date.groupby(['month']).agg(
+            total_profit=pd.NamedAgg(column='total_profit', aggfunc='sum')
+        ).reset_index()
+        processed_data_by_year = processed_data_by_year.sort_values('month')
+
+        profit_data = processed_data_by_year.to_dict(orient='records')
+    
+
+
         processed_data_global_stk_grp = processed_data_global_stk_grp.round(2)
         account_stk_merge_dic = processed_data_global_stk_grp.to_dict(orient='records')
         account_dict = defaultdict(list)
@@ -195,7 +217,8 @@ def index():
                             total_loss=total_loss, 
                             win_percentage=win_percentage,
                             account_summary=processed_data_global_account_grp.to_dict(orient='records'),
-                            account_stk_merge=account_dict
+                            account_stk_merge=account_dict,
+                            profit_data=profit_data
                            )
 
     except Exception as e:
