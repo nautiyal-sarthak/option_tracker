@@ -8,6 +8,7 @@ from stock  import *
 import redis
 import json
 from datetime import datetime, timedelta
+import os
 
 
 # Configure logging
