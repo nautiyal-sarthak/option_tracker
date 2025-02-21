@@ -8,161 +8,239 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-
     <header>
-            <img src="static/images/image.jpg" alt="Logo" class="logo">
+        <img src="{{ url_for('static', filename='images/image.jpg') }}" alt="Logo" class="logo">
         <h1>Options Tracker</h1>
     </header>
 
     <div class="content">
+        <!-- Filter Buttons -->
+        <div class="filter-container">
+            <button class="filter-btn" onclick="selectFilter(this, '15days')">15 Days</button>
+            <button class="filter-btn" onclick="selectFilter(this, '1month')">1 Month</button>
+            <button class="filter-btn" onclick="selectFilter(this, '3months')">3 Months</button>
+            <button class="filter-btn" onclick="selectFilter(this, '6months')">6 Months</button>
+            <button class="filter-btn" onclick="selectFilter(this, '1year')">1 Year</button>
+            <button class="filter-btn" onclick="selectFilter(this, 'lastyear')">Last Year</button>
+            <button class="filter-btn selected" onclick="selectFilter(this, 'all')">Since Inception</button>
+        </div>
+
         <!-- STATS SECTION -->
-        <div class="stats-container">
+        <div class="stats-container" id="stats-container">
             <div class="section">
                 <h2>Total Premium</h2>
-                <p class="{{ 'profit' if total_premium_collected >= 0 else 'loss' }}">
+                <p class="{{ 'profit' if total_premium_collected >= 0 else 'loss' }}" id="total-premium">
                     {{ total_premium_collected }}
                 </p>
             </div>
             <div class="section">
                 <h2>Total Profit</h2>
-                <p class="{{ 'profit' if total_profit >= 0 else 'loss' }}">
+                <p class="{{ 'profit' if total_profit >= 0 else 'loss' }}" id="total-profit">
                     {{ total_profit }}
                 </p>
             </div>
             <div class="section">
-                <h2>P/L of sales</h2>
-                <p class="{{ 'profit' if p_l_stock >= 0 else 'loss' }}">
+                <h2>P/L of Sales</h2>
+                <p class="{{ 'profit' if p_l_stock >= 0 else 'loss' }}" id="pl-stock">
                     {{ p_l_stock }}
                 </p>
             </div>
             <div class="section">
                 <h2>Win/Loss</h2>
-                <p class="profit">Total Wins: {{ total_wins }}</p>
-                <p class="loss">Total Losses: {{ total_loss }}</p>
-                <p>
-                    Win %: {{ win_percentage }}
-                </p>
+                <p class="profit" id="total-wins">Total Wins: {{ total_wins }}</p>
+                <p class="loss" id="total-loss">Total Losses: {{ total_loss }}</p>
+                <p id="win-percentage">Win %: {{ win_percentage }}</p>
             </div>
             <div class="section">
-                <h2>Total open trades</h2>
-                <p>
-                    {{ total_open_trades }}
-                </p>
+                <h2>Total Open Trades</h2>
+                <p id="total-open-trades">{{ total_open_trades }}</p>
             </div>
         </div>
 
+        <!-- Profit Chart -->
         <div class="content">
             <div class="stats-container">
-                <canvas id="profitChart" style="width: 100%; height: 200px;"></canvas>
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
             </div>
         </div>
-    
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                // Retrieve profit data passed from Flask
-                const profitData = JSON.parse('{{ profit_data | tojson | safe }}');
-    
-                // Extract time and profit values
-                const labels = profitData.map(entry => entry.month);
-                const profitValues = profitData.map(entry => entry.total_profit);
-    
-                // Create the chart
-                const ctx = document.getElementById('profitChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Total Profit Over Time',
-                            data: profitValues,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            borderWidth: 2,
-                            tension: 0.3
-                        }]
+
+        <!-- ACCOUNT DETAILS SECTION -->
+        <div id="accounts-container">
+            {% for account in account_summary %}
+            <div class="account">
+                <div class="account-header" onclick="toggleAccountDetails(this)">
+                    <div class="left-section">
+                        <span>Account: {{ account.accountId }}</span>
+                    </div>
+                    <div class="right-section" data-account-id="{{ account.accountId }}">
+                        <span>Premium:</span>
+                        <span class="{{ 'profit' if account.total_premium_collected >= 0 else 'loss' }}">
+                            {{ account.total_premium_collected }}
+                        </span>
+                        <span>| Total Profit:</span>
+                        <span class="{{ 'profit' if account.total_profit >= 0 else 'loss' }}">
+                            {{ account.total_profit }}
+                        </span>
+                        <span>| Stock Sale:</span>
+                        <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
+                            {{ account.stock_sale_pl }}
+                        </span>
+                        <span>| W/L:</span>
+                        <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
+                            ({{ account.total_wins }} / {{ account.total_loss }})
+                        </span>
+                        <span>| Open trades:</span>
+                        <span>{{ account.total_open_trades }}</span>
+                    </div>
+                </div>
+                <div class="account-details" style="display: block;">
+                    <ul>
+                        <div class="stock-container" data-account-id="{{ account.accountId }}">
+                            {% for stock in account_stk_merge[account.accountId] %}
+                            <div class="stock-card">
+                                <a href="/account/{{account.accountId}}/symbol/{{stock.symbol}}" class="stock-symbol">
+                                    <strong>{{ stock.symbol }}</strong>
+                                </a>
+                                <div class="stock-details">
+                                    <span>Premium collected: <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }}</span></span>
+                                    <span>total profit: <span class="{{ 'profit' if stock.total_profit >= 0 else 'loss' }}">{{stock.total_profit}}</span></span>
+                                    <span>stock sale P/L: <span class="{{ 'profit' if stock.stock_sale_pl >= 0 else 'loss' }}">{{stock.stock_sale_pl}}</span></span>
+                                    <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_loss }}</span> ({{ stock.w_L }}%)</span>
+                                    <span>Stocks Qty: {{ stock.total_stock_quantity }}</span>
+                                    <span>Open trades: {{ stock.total_open_trades }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        let profitChart;
+
+        function updateChart(profitData) {
+            const labels = profitData.map(entry => entry.month);
+            const profitValues = profitData.map(entry => entry.total_profit);
+
+            if (profitChart) {
+                profitChart.destroy();
+            }
+
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            profitChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Profit Over Time',
+                        data: profitValues,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Allow stretching to fit container
+                    scales: {
+                        x: { title: { display: true, text: 'Time' } },
+                        y: { title: { display: true, text: 'Total Profit' }, beginAtZero: false }
                     },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: {
-                                title: { display: true, text: 'Time' }
-                            },
-                            y: {
-                                title: { display: true, text: 'Total Profit' },
-                                beginAtZero: false
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    size: 14 // Increase font size for clarity
+                                }
                             }
                         }
+                    },
+                    layout: {
+                        padding: 10 // Add padding to prevent clipping
                     }
-                });
+                }
             });
-        </script>
-        <!-- ACCOUNT DETAILS SECTION -->
-        {% for account in account_summary %}
-        <div class="account">
-            <div class="account-header" onclick="toggleAccountDetails(this)">
-                <div class="left-section">
-                    <span>Account: {{ account.accountId }}</span>
-                </div>
-                <div class="right-section">
-                    <span>Premium:</span>
-                    <span class="{{ 'profit' if account.total_premium_collected >= 0 else 'loss' }}">
-                        {{ account.total_premium_collected }}
-                    </span>
-                    <span>| Total Profit:</span>
-                    <span class="{{ 'profit' if account.total_profit >= 0 else 'loss' }}">
-                        {{ account.total_profit }}
-                    </span>
-                    <span>| Stock Sale:</span>
-                    <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
-                        {{ account.stock_sale_pl }}
-                    </span>
-                    <span>| W/L:</span>
-                    <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
-                        ({{ account.total_wins }} / {{ account.total_loss }})
-                    </span>
-                    <span>| Open trades:</span>
-                    <span>
-                        {{ account.total_open_trades }}
-                    </span>
-                </div>
 
-            </div>
-            <div class="account-details" style="display: block;">
-                <ul>
-                    <div class="stock-container">
-                        {% for stock in account_stk_merge[account.accountId] %}
-                        <div class="stock-card">
-                            <a href="/account/{{account.accountId}}/symbol/{{stock.symbol}}" class="stock-symbol">
-                                <strong>{{ stock.symbol }}</strong>
-                            </a>
-                            <div class="stock-details">
-                                <span>
-                                    Premium collected: <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }}</span>
-                                </span>
-                                <span>total profit: <span class="{{ 'profit' if stock.total_profit >= 0 else 'loss' }}">{{stock.total_profit}} </span></span>
-                                <span>stock sale P/L: <span class="{{ 'profit' if stock.stock_sale_pl >= 0 else 'loss' }}">{{stock.stock_sale_pl}}</span></span>
-                                <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_loss }}</span> ({{ stock.w_L }}%)</span>
-                                <span>Stocks Qty: {{ stock.total_stock_quantity }}</span>
-                                <span>Open trades: {{ stock.total_open_trades }}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                </ul>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    
-    <script>
+            // Set explicit canvas size to improve resolution
+            profitChart.canvas.style.width = '100%';
+            profitChart.canvas.style.height = '400px';
+        }
+
+        function getData(filter) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            const clickedButton = document.querySelector(`button[onclick="selectFilter(this, '${filter}')"]`);
+            if (clickedButton) clickedButton.classList.add('selected');
+
+            fetch(`/get_data?filter=${filter}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error(data.error);
+                        return;
+                    }
+                    // (Rest of getData function remains unchanged)
+                    updateChart(data.profit_data);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function selectFilter(button, filter) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            button.classList.add('selected');
+            getData(filter);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const profitData = JSON.parse('{{ profit_data | tojson | safe }}');
+            updateChart(profitData);
+        });
+
         function toggleAccountDetails(element) {
             var details = element.nextElementSibling;
             details.style.display = details.style.display === "block" ? "none" : "block";
         }
     </script>
-    
 
+    <style>
+        .filter-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            margin: 0 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .filter-btn:hover {
+            background-color: #e0e0e0;
+        }
+        .filter-btn.selected {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        /* Chart container styles */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px; /* Increased height for better resolution */
+            max-width: 100%;
+        }
+    </style>
 </body>
 </html>
-          
