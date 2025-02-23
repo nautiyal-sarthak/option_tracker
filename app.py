@@ -34,8 +34,10 @@ app = Flask(__name__)
 
 if 'global_trade_info' not in globals():
     global_trade_info = None
-if 'raw_df' not in globals():
-    raw_df = None
+
+if 'global_filter_type' not in globals():
+    global_filter_type = None
+
 
 def filter_by_time_period(df, filter_type):
     today = datetime.now()
@@ -79,7 +81,9 @@ def convert_to_serializable(obj):
 
 def process_trade_data(filter_type='all'):
     global global_trade_info
-    global raw_df
+    global global_filter_type
+
+    global_filter_type = filter_type
 
     try:
         cached_data = get_from_cache("trades")
@@ -149,7 +153,7 @@ def process_trade_data(filter_type='all'):
             0,  # Set to 0 when total_trades is 0
             (stock_summary['total_wins'] / stock_summary['total_trades']) * 100
         )
-        stock_summary['total_stock_quantity'] = stock_summary['total_assign_quantity'] - stock_summary['total_sold_quantity']
+        stock_summary['total_stock_quantity'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
 
         # Date-based aggregation
         date_summary = filtered_data.groupby(['accountId', 'symbol', 'trade_open_date']).agg(
@@ -209,8 +213,13 @@ def get_data():
 @app.route('/account/<account_id>/symbol/<symbol>')
 def stock_details_inner(account_id, symbol):
     global global_trade_info
+    global global_filter_type
+
     if global_trade_info is None:
         return "Stock data is not available yet. Please try again later."
+    
+    if global_filter_type is None:
+        global_filter_type = "all"
 
     # Filter stock details for the given account and symbol
     stock_data = global_trade_info[
@@ -219,6 +228,7 @@ def stock_details_inner(account_id, symbol):
     ]
 
     stock_data = stock_data.reset_index()
+    stock_data = filter_by_time_period(stock_data,global_filter_type)
 
     # Get summary data
     processed_data_global_stk_grp = stock_data.groupby(['accountId', 'symbol']).agg(
@@ -264,6 +274,7 @@ def stock_details_inner(account_id, symbol):
     stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
     return render_template('stock_details.html',
                           account_id=account_id,
+                          global_filter_type=global_filter_type,
                           symbol=symbol,
                           stk_smry=stk_smry,
                           open_cols=stock_data_open.columns, open_data=stock_data_open.values.tolist(),
@@ -273,4 +284,4 @@ def stock_details_inner(account_id, symbol):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # Render provides PORT as an environment variable
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port,debug=True)
