@@ -58,8 +58,8 @@
         </div>
 
         <!-- Profit Chart -->
-        <div class="content">
-            <div class="stats-container">
+        <div>
+            <div>
                 <div class="chart-container">
                     <canvas id="profitChart"></canvas>
                 </div>
@@ -187,8 +187,79 @@
                         console.error(data.error);
                         return;
                     }
-                    // (Rest of getData function remains unchanged)
+                    
+                    
+                    // Update Stats Section
+                    document.getElementById('total-premium').innerHTML = data.total_premium_collected.toLocaleString();
+                    document.getElementById('total-premium').className = data.total_premium_collected >= 0 ? 'profit' : 'loss';
+                    document.getElementById('total-profit').innerHTML = data.total_profit.toLocaleString();
+                    document.getElementById('total-profit').className = data.total_profit >= 0 ? 'profit' : 'loss';
+                    document.getElementById('pl-stock').innerHTML = data.p_l_stock.toLocaleString();
+                    document.getElementById('pl-stock').className = data.p_l_stock >= 0 ? 'profit' : 'loss';
+                    document.getElementById('total-wins').innerHTML = `Total Wins: ${data.total_wins}`;
+                    document.getElementById('total-loss').innerHTML = `Total Losses: ${data.total_loss}`;
+                    document.getElementById('win-percentage').innerHTML = `Win %: ${data.win_percentage}`;
+                    document.getElementById('total-open-trades').innerHTML = data.total_open_trades;
+
+                    // Update Chart
                     updateChart(data.profit_data);
+
+                    // Update Account Details
+                    const accountsContainer = document.getElementById('accounts-container');
+                    accountsContainer.innerHTML = '';
+                    data.account_summary.forEach(account => {
+                        const accountDiv = document.createElement('div');
+                        accountDiv.className = 'account';
+                        accountDiv.innerHTML = `
+                            <div class="account-header" onclick="toggleAccountDetails(this)">
+                                <div class="left-section">
+                                    <span>Account: ${account.accountId}</span>
+                                </div>
+                                <div class="right-section" data-account-id="${account.accountId}">
+                                    <span>Premium:</span>
+                                    <span class="${account.total_premium_collected >= 0 ? 'profit' : 'loss'}">
+                                        ${account.total_premium_collected.toLocaleString()}
+                                    </span>
+                                    <span>| Total Profit:</span>
+                                    <span class="${account.total_profit >= 0 ? 'profit' : 'loss'}">
+                                        ${account.total_profit.toLocaleString()}
+                                    </span>
+                                    <span>| Stock Sale:</span>
+                                    <span class="${account.stock_sale_pl >= 0 ? 'profit' : 'loss'}">
+                                        ${account.stock_sale_pl.toLocaleString()}
+                                    </span>
+                                    <span>| W/L:</span>
+                                    <span class="${account.stock_sale_pl >= 0 ? 'profit' : 'loss'}">
+                                        (${account.total_wins} / ${account.total_loss})
+                                    </span>
+                                    <span>| Open trades:</span>
+                                    <span>${account.total_open_trades}</span>
+                                </div>
+                            </div>
+                            <div class="account-details" style="display: block;">
+                                <ul>
+                                    <div class="stock-container" data-account-id="${account.accountId}">
+                                        ${data.account_stk_merge[account.accountId].map(stock => `
+                                            <div class="stock-card">
+                                                <a href="/account/${account.accountId}/symbol/${stock.symbol}" class="stock-symbol">
+                                                    <strong>${stock.symbol}</strong>
+                                                </a>
+                                                <div class="stock-details">
+                                                    <span>Premium collected: <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()}</span></span>
+                                                    <span>total profit: <span class="${stock.total_profit >= 0 ? 'profit' : 'loss'}">${stock.total_profit.toLocaleString()}</span></span>
+                                                    <span>stock sale P/L: <span class="${stock.stock_sale_pl >= 0 ? 'profit' : 'loss'}">${stock.stock_sale_pl.toLocaleString()}</span></span>
+                                                    <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_loss}</span> (${stock.w_L !== null ? stock.w_L.toFixed(2) : 'N/A'}%)</span>
+                                                    <span>Stocks Qty: ${stock.total_stock_quantity}</span>
+                                                    <span>Open trades: ${stock.total_open_trades}</span>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </ul>
+                            </div>
+                        `;
+                        accountsContainer.appendChild(accountDiv);
+                    });
                 })
                 .catch(error => console.error('Error:', error));
         }
@@ -234,11 +305,11 @@
             border-color: #4CAF50;
         }
 
-        /* Chart container styles */
+        /* Chart container styles */kk
         .chart-container {
             position: relative;
             width: 100%;
-            height: 400px; /* Increased height for better resolution */
+            height: 80px; /* Increased height for better resolution */
             max-width: 100%;
         }
     </style>
