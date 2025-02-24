@@ -58,6 +58,12 @@ def find_matching_key(target_key, lookup_dict, trade_open_date):
 
 def process_wheel_trades(df):
     df = df.copy()
+    df = df.fillna("")
+    df_grp = df.groupby(['optionId','symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory']).agg(
+        quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
+        commission=pd.NamedAgg(column='commission', aggfunc='sum'),
+        total_premium=pd.NamedAgg(column='total_premium', aggfunc='sum')
+    ).reset_index()
 
     df["asset_priority"] = df["putCall"].apply(lambda x: 1 if x in ["Call", "Put"] else 2)
     df.sort_values(by=["asset_priority", "symbol", "tradeDate"], ascending=[True, True, True], inplace=True)
