@@ -39,6 +39,7 @@ def check_and_create_table():
     conn.close()
 
 def get_max_trade_date():
+    check_and_create_table()
     """Fetch the maximum trade_date from the 'trades' table."""
     conn = get_db_connection()
     cursor = conn.cursor()
