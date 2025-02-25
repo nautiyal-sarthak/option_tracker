@@ -125,53 +125,63 @@
         let profitChart;
 
         function updateChart(profitData) {
-            const labels = profitData.map(entry => entry.trade_open_date);
-            const profitValues = profitData.map(entry => entry.total_profit);
+    const labels = profitData.map(entry => entry.trade_open_date);
+    const profitValues = profitData.map(entry => entry.total_profit);
 
-            if (profitChart) {
-                profitChart.destroy();
-            }
+    if (profitChart) {
+        profitChart.destroy();
+    }
 
-            const ctx = document.getElementById('profitChart').getContext('2d');
-            profitChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Profit Over Time',
-                        data: profitValues,
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderWidth: 2,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false, // Allow stretching to fit container
-                    scales: {
-                        x: { title: { display: true, text: 'Time' } },
-                        y: { title: { display: true, text: 'Total Profit' }, beginAtZero: false }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                font: {
-                                    size: 14 // Increase font size for clarity
-                                }
-                            }
+    const ctx = document.getElementById('profitChart').getContext('2d');
+    profitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Profit Over Time',
+                data: profitValues,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderWidth: 2,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: 'Time' },
+                    ticks: {
+                        maxTicksLimit: 10, // Show only 10 items at a time
+                        autoSkip: false,
+                        callback: function(value, index, values) {
+                            const stepSize = Math.ceil(labels.length / 10);
+                            return index % stepSize === 0 ? labels[index] : "";
                         }
-                    },
-                    layout: {
-                        padding: 10 // Add padding to prevent clipping
+                    }
+                },
+                y: { title: { display: true, text: 'Total Profit' }, beginAtZero: false }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        font: {
+                            size: 14
+                        }
                     }
                 }
-            });
-
-            // Set explicit canvas size to improve resolution
-            profitChart.canvas.style.width = '100%';
-            profitChart.canvas.style.height = '400px';
+            },
+            layout: {
+                padding: 10
+            }
         }
+    });
+
+    // Set explicit canvas size to improve resolution
+    profitChart.canvas.style.width = '100%';
+    profitChart.canvas.style.height = '400px';
+}
 
         function getData(filter) {
             document.querySelectorAll('.filter-btn').forEach(btn => {
