@@ -28,9 +28,9 @@
         <!-- STATS SECTION -->
         <div class="stats-container" id="stats-container">
             <div class="section">
-                <h2>Total Premium</h2>
+                <h2>Total Premium (open trades)</h2>
                 <p class="{{ 'profit' if total_premium_collected >= 0 else 'loss' }}" id="total-premium">
-                    {{ total_premium_collected }}
+                    {{ total_premium_formated }}
                 </p>
             </div>
             <div class="section">
@@ -75,9 +75,9 @@
                         <span>Account: {{ account.accountId }}</span>
                     </div>
                     <div class="right-section" data-account-id="{{ account.accountId }}">
-                        <span>Premium:</span>
+                        <span>Premium(Open trades):</span>
                         <span class="{{ 'profit' if account.total_premium_collected >= 0 else 'loss' }}">
-                            {{ account.total_premium_collected }}
+                            {{ account.total_premium_collected }} ({{account.total_premium_collected_open}})
                         </span>
                         <span>| Total Profit:</span>
                         <span class="{{ 'profit' if account.total_profit >= 0 else 'loss' }}">
@@ -104,7 +104,7 @@
                                     <strong>{{ stock.symbol }}</strong>
                                 </a>
                                 <div class="stock-details">
-                                    <span>Premium collected: <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }}</span></span>
+                                    <span>Premium : <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }} ({{stock.total_premium_collected_open}})</span></span>
                                     <span>total profit: <span class="{{ 'profit' if stock.total_profit >= 0 else 'loss' }}">{{stock.total_profit}}</span></span>
                                     <span>stock sale P/L: <span class="{{ 'profit' if stock.stock_sale_pl >= 0 else 'loss' }}">{{stock.stock_sale_pl}}</span></span>
                                     <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_loss }}</span> ({{ stock.w_L }}%)</span>
@@ -125,7 +125,7 @@
         let profitChart;
 
         function updateChart(profitData) {
-            const labels = profitData.map(entry => entry.month);
+            const labels = profitData.map(entry => entry.trade_open_date);
             const profitValues = profitData.map(entry => entry.total_profit);
 
             if (profitChart) {
@@ -190,7 +190,7 @@
                     
                     
                     // Update Stats Section
-                    document.getElementById('total-premium').innerHTML = data.total_premium_collected.toLocaleString();
+                    document.getElementById('total-premium').innerHTML = data.total_premium_formated.toLocaleString();
                     document.getElementById('total-premium').className = data.total_premium_collected >= 0 ? 'profit' : 'loss';
                     document.getElementById('total-profit').innerHTML = data.total_profit.toLocaleString();
                     document.getElementById('total-profit').className = data.total_profit >= 0 ? 'profit' : 'loss';
@@ -218,7 +218,7 @@
                                 <div class="right-section" data-account-id="${account.accountId}">
                                     <span>Premium:</span>
                                     <span class="${account.total_premium_collected >= 0 ? 'profit' : 'loss'}">
-                                        ${account.total_premium_collected.toLocaleString()}
+                                        ${account.total_premium_collected.toLocaleString()} (${account.total_premium_collected_open.toLocaleString()})
                                     </span>
                                     <span>| Total Profit:</span>
                                     <span class="${account.total_profit >= 0 ? 'profit' : 'loss'}">
@@ -245,7 +245,7 @@
                                                     <strong>${stock.symbol}</strong>
                                                 </a>
                                                 <div class="stock-details">
-                                                    <span>Premium collected: <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()}</span></span>
+                                                    <span>Premium collected: <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
                                                     <span>total profit: <span class="${stock.total_profit >= 0 ? 'profit' : 'loss'}">${stock.total_profit.toLocaleString()}</span></span>
                                                     <span>stock sale P/L: <span class="${stock.stock_sale_pl >= 0 ? 'profit' : 'loss'}">${stock.stock_sale_pl.toLocaleString()}</span></span>
                                                     <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_loss}</span> (${stock.w_L !== null ? stock.w_L.toFixed(2) : 'N/A'}%)</span>

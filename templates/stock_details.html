@@ -31,7 +31,7 @@
             <div class="card">
                 <h4>Total Premium</h4>
                 <p class="{{ 'profit' if stk_smry.total_premium_collected >= 0 else 'loss' }}">
-                    {{ stk_smry.total_premium_collected }}
+                    {{ stk_smry.total_premium_collected }} ({{stk_smry.total_premium_collected_open}})
                 </p>
             </div>
             <div class="card">
