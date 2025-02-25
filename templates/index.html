@@ -125,7 +125,7 @@
         let profitChart;
 
         function updateChart(profitData) {
-    const labels = profitData.map(entry => entry.trade_open_date);
+    const labels = profitData.map(entry => entry.year_month_week);
     const profitValues = profitData.map(entry => entry.total_profit);
 
     if (profitChart) {
