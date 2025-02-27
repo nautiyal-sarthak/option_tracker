@@ -63,6 +63,15 @@ def check_and_create_table():
         );
         """)
 
+        # Insert user into 'user_audit' only if it doesn't exist
+        cursor.execute("""
+        INSERT INTO user_audit (user_id, auth_token, broker_name)
+        SELECT 'sahil.bhola2@gmail.com', 'dsgGZzzheE9bbGdlmMQ1wGWkGQ2hAZSn0', 'Quest'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM user_audit WHERE user_id = 'sahil.bhola2@gmail.com'
+        );
+        """)
+
         conn.commit()
     except Exception as e:
         print(f"Database error: {e}")
