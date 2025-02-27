@@ -4,5 +4,5 @@ from entity import trade
 class BaseBroker(ABC):
     
     @abstractmethod
-    def get_data(self) -> list[trade.Trade]:
+    def get_data(self,email) -> list[trade.Trade]:
         pass

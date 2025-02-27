@@ -13,10 +13,10 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 
 class IBKRBroker(BaseBroker):
-    def __init__(self,is_test=False):
+    def __init__(self,token,is_test=False):
         super().__init__()
         self.is_test = is_test
-        self.token = "121034539652171842836741"
+        self.token = token
         self.query_id = "1144505"
         self.flex_version = 3
         self.requestBase = "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService"
@@ -105,7 +105,7 @@ class IBKRBroker(BaseBroker):
          
         return parsed_data
 
-    def get_data(self):
+    def get_data(self,email):
         if self.is_test:
             xml_data = self.get_test_data()
             data = self.parse_data(xml_data)
@@ -113,11 +113,11 @@ class IBKRBroker(BaseBroker):
             refCode = self.send_request()
             time.sleep(20)
             xml_data = self.get_statement(refCode)
-            max_date = get_max_trade_date()
+            max_date = get_max_trade_date(email)
             delta_data = self.parse_data(xml_data,max_date)
             if delta_data:
-                insert_trades(delta_data)
-            data = get_all_trades()
+                insert_trades(delta_data,email)
+            data = get_all_trades(email)
 
             
         

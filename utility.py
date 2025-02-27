@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
 import numpy as np
+import sqlite3
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,6 +15,9 @@ def transform_data(df):
     df['strike'] = pd.to_numeric(df['strike'])
     df['expiry'] = pd.to_datetime(df['expiry'])
 
+    #if expiry is NaT then set it to 9999-12-31
+    df['expiry'] = df['expiry'].fillna(pd.Timestamp('2099-12-31'))
+
     # make the openCloseIndicator more readable
     df['openCloseIndicator'] = df['openCloseIndicator'].map({
         'O': 'Open',
@@ -23,13 +27,23 @@ def transform_data(df):
     # make the putCall more readable
     df['putCall'] = df['putCall'].map({
         'P': 'Put',
-        'C': 'Call'
+        'C': 'Call',
+        'Call': 'Call',
+        'Put': 'Put'
     })
 
     # make the assetCategory more readable
     df['assetCategory'] = df['assetCategory'].map({
         'STK': 'Stock',
         'OPT': 'Option'
+    })
+
+        # make the assetCategory more readable
+    df['buySell'] = df['buySell'].map({
+        'B': 'BUY',
+        'S': 'SELL',
+        'BUY': 'BUY',
+        'SELL': 'SELL'
     })
 
     # assert that buySell col only has BUY or SELL
@@ -59,7 +73,7 @@ def find_matching_key(target_key, lookup_dict, trade_open_date):
 def process_wheel_trades(df):
     df = df.copy()
     df = df.fillna("")
-    df_grp = df.groupby(['optionId','symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory']).agg(
+    df = df.groupby(['optionId','symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
         quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
         commission=pd.NamedAgg(column='commission', aggfunc='sum'),
         total_premium=pd.NamedAgg(column='total_premium', aggfunc='sum')
@@ -244,6 +258,19 @@ def process_wheel_trades(df):
 
     return df
 
+def getUserToken(id):
+    conn = sqlite3.connect("trades.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT auth_token,broker_name FROM user_audit where user_id = ?", (id,))
+    out = cursor.fetchall()
+    if len(out) == 0:
+        return None, None
+    else:
+        token = out[0][0]
+        broker = out[0][1]
+
+    conn.close()
+    return token , broker
     
 
     

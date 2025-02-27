@@ -3,6 +3,8 @@ pandas
 requests
 yfinance
 flask-sqlalchemy
-redis
+flask-login
+authlib
+flask_session
 
 
