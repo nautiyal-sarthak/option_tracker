@@ -182,7 +182,7 @@ class QuestradeBroker(BaseBroker):
         else:
             max_date = get_max_trade_date(email)
             if max_date is None :
-                max_date = datetime(1900, 1, 1)
+                max_date = datetime(2023, 1, 1)
             else:
                 max_date = datetime.strptime(max_date,"%Y%m%d") 
 
