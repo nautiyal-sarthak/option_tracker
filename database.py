@@ -57,7 +57,7 @@ def check_and_create_table():
         # Insert user into 'user_audit' only if it doesn't exist
         cursor.execute("""
         INSERT INTO user_audit (user_id, auth_token, broker_name)
-        SELECT 'nauty.om@gmail.com', '4JO7Mp3VB7ALeipSEZMHGQbiLDyLGY4A0', 'Quest'
+        SELECT 'nauty.om@gmail.com', '07fgl4KExX7PBgA8K6bILUtwFRTbbeVU0', 'Quest'
         WHERE NOT EXISTS (
             SELECT 1 FROM user_audit WHERE user_id = 'nauty.om@gmail.com'
         );

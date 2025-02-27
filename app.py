@@ -36,7 +36,8 @@ def get_from_cache(key):
     return None  # Return None if not found or expired
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secure_random_secret_key'
+
+app.secret_key = os.getenv("SECRET_KEY", "change_this_to_a_secure_value")
 app.config['SESSION_TYPE'] = 'filesystem'  # Store session data in the file system
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True  # Sign session cookies for security
