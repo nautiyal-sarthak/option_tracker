@@ -5,7 +5,6 @@ import pandas as pd
 from utility import *
 import logging
 from collections import defaultdict
-from stock import *
 from datetime import datetime, timedelta, date
 import os
 import numpy as np
