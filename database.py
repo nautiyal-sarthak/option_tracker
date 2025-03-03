@@ -144,3 +144,16 @@ def update_refresh_token(old_token, new_token):
         print(f"Error updating refresh token: {e}")
     finally:
         conn.close()
+
+def update_refresh_token_1(user, new_token):
+    """Update the refresh token for a user."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("UPDATE user_audit SET auth_token = ? WHERE user_id = ?", (new_token, user))
+        conn.commit()
+    except Exception as e:
+        print(f"Error updating refresh token: {e}")
+    finally:
+        conn.close()

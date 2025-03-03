@@ -68,10 +68,12 @@ login_manager.login_view = "login"
 login_manager.init_app(app)
 
 class User(UserMixin):
-    def __init__(self, id, name, email):
+    def __init__(self, id, name, email,token,broker):
         self.id = id
         self.name = name
         self.email = email
+        self.token = token
+        self.broker = broker
 
 users = {}
 
@@ -91,15 +93,14 @@ def login():
 
 @app.route('/login/callback')
 def callback():
-    expected_state = session.get('oauth_state')  # This is where Flask stores state
     token = oauth.google.authorize_access_token()
     user_info = oauth.google.get('userinfo').json()
 
-    logging.debug(f"Expected State: {expected_state}")
-    logging.debug(f"Received Token State: {token.get('state', 'N/A')}")
-
     user_id = user_info['id']
-    user = User(id=user_id, name=user_info['name'], email=user_info['email'])
+
+    token,broker = getUserToken(user_info['email'])
+    user = User(id=user_id, name=user_info['name'], email=user_info['email'],token=token,broker=broker)
+
     users[user_id] = user
 
     login_user(user)
@@ -292,11 +293,13 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 @login_required
 def dashboard():
     try:
-        token,broker = getUserToken(current_user.email)
-        data = process_trade_data(current_user.email,token,broker,'all')
+        data = process_trade_data(current_user.email,current_user.token,current_user.broker,'all')
         return render_template('index.html', **data)
-    except Exception as e:
-        return str(e)
+    except Exception as e:        
+        error_message = str(e)
+        if "authentication" in error_message.lower():
+            return redirect(url_for('provide_token'))
+        return jsonify({"error": error_message})
 
 @app.route('/get_data', methods=['GET'])
 @login_required
@@ -306,7 +309,25 @@ def get_data():
         data = process_trade_data(current_user.email,filter_type=filter_type)
         return data  # This will now work with converted types
     except Exception as e:
-        return jsonify({"error": str(e)})
+        error_message = str(e)
+        if "authentication" in error_message.lower():
+            return redirect(url_for('provide_token'))
+        return jsonify({"error": error_message})
+    
+
+@app.route('/provide_token', methods=['GET', 'POST'])
+@login_required
+def provide_token():
+    if request.method == 'POST':
+        # Handle the token submission
+        token = request.form.get('token')
+        update_refresh_token_1(current_user.email, token)
+        
+        # Update the token for the current user
+        current_user.token = token
+
+        return redirect(url_for('dashboard'))
+    return render_template('provide_token.html')
 
 @app.route('/account/<account_id>/symbol/<symbol>')
 @login_required

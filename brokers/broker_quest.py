@@ -42,7 +42,7 @@ class QuestradeBroker(BaseBroker):
 
         except requests.exceptions.RequestException as e:
             logging.error(f"Network error during authentication: {e}")
-            raise
+            raise Exception("Network error during authentication")
 
     def get_account_ids(self):
         """Fetch the first account ID available."""
@@ -56,43 +56,47 @@ class QuestradeBroker(BaseBroker):
 
 
     def send_request(self, db_max_date):
-        """Fetch all historical trade executions from Questrade API."""
-        self.authenticate()  # Ensure fresh token
-        account_ids = self.get_account_ids()
-        headers = {"Authorization": f"Bearer {self.access_token}"}
+        try:
+            """Fetch all historical trade executions from Questrade API."""
+            self.authenticate()  # Ensure fresh token
+            account_ids = self.get_account_ids()
+            headers = {"Authorization": f"Bearer {self.access_token}"}
 
-        trades = []
+            trades = []
 
-        # Start from the next day after the last recorded trade
-        start_date = db_max_date + timedelta(days=1)
-        end_date = datetime.today() - timedelta(days=1)  # Yesterday's date
+            # Start from the next day after the last recorded trade
+            start_date = db_max_date + timedelta(days=1)
+            end_date = datetime.today() - timedelta(days=1)  # Yesterday's date
 
-        while start_date < end_date:
-            # Get the next month's end date, ensuring it doesn't exceed today's date
-            next_month = start_date + timedelta(days=30)
-            if next_month > end_date:
-                next_month = end_date  # Ensure we don't go beyond the available data
+            while start_date < end_date:
+                # Get the next month's end date, ensuring it doesn't exceed today's date
+                next_month = start_date + timedelta(days=30)
+                if next_month > end_date:
+                    next_month = end_date  # Ensure we don't go beyond the available data
 
-            start_time_str = start_date.strftime("%Y-%m-%dT00:00:00-05:00")
-            end_time_str = next_month.strftime("%Y-%m-%dT23:59:59-05:00")
-            params = {"startTime": start_time_str, "endTime": end_time_str}
+                start_time_str = start_date.strftime("%Y-%m-%dT00:00:00-05:00")
+                end_time_str = next_month.strftime("%Y-%m-%dT23:59:59-05:00")
+                params = {"startTime": start_time_str, "endTime": end_time_str}
 
-            for account_id in account_ids:
-                url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
-                response = requests.get(url, headers=headers, params=params).json()
+                for account_id in account_ids:
+                    url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
+                    response = requests.get(url, headers=headers, params=params).json()
 
-                if "executions" in response:
-                    execution_elements = response['executions']
-                    for element in execution_elements:
-                        element['accountId'] = account_id['number']
-                        trades.append(element)
-                else:
-                    logging.warning(f"No trades found for {start_time_str} to {end_time_str}")
+                    if "executions" in response:
+                        execution_elements = response['executions']
+                        for element in execution_elements:
+                            element['accountId'] = account_id['number']
+                            trades.append(element)
+                    else:
+                        logging.warning(f"No trades found for {start_time_str} to {end_time_str}")
 
-            # Move to the next month
-            start_date = next_month + timedelta(days=1)
+                # Move to the next month
+                start_date = next_month + timedelta(days=1)
 
-        return trades
+            return trades
+        except Exception as e:
+            logging.error(f"Failed to fetch data: {e}")
+            raise Exception(e)
 
 
     def get_test_data(self):
@@ -175,21 +179,25 @@ class QuestradeBroker(BaseBroker):
         return parsed_data
 
     def get_data(self,email):
-        """Main method to fetch and process trade data."""
-        if self.is_test:
-            test_json_data = self.get_test_data()
-            data = self.parse_data(test_json_data)
-        else:
-            max_date = get_max_trade_date(email)
-            if max_date is None :
-                max_date = datetime(2023, 1, 1)
+        try:
+            """Main method to fetch and process trade data."""
+            if self.is_test:
+                test_json_data = self.get_test_data()
+                data = self.parse_data(test_json_data)
             else:
-                max_date = datetime.strptime(max_date,"%Y%m%d") 
+                max_date = get_max_trade_date(email)
+                if max_date is None :
+                    max_date = datetime(2023, 1, 1)
+                else:
+                    max_date = datetime.strptime(max_date,"%Y%m%d") 
 
-            delta_data_raw = self.send_request(max_date)
-            delta_data = self.parse_data(delta_data_raw)
-            if delta_data:
-                insert_trades(delta_data,email)  # Assuming this is from your database module
-            data = get_all_trades(email)  # Assuming this is from your database module
-        
-        return data
+                delta_data_raw = self.send_request(max_date)
+                delta_data = self.parse_data(delta_data_raw)
+                if delta_data:
+                    insert_trades(delta_data,email)  # Assuming this is from your database module
+                data = get_all_trades(email)  # Assuming this is from your database module
+            
+            return data
+        except Exception as e:
+            logging.error(f"Failed to get data: {e}")
+            raise Exception(e)
