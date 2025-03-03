@@ -259,18 +259,25 @@ def process_wheel_trades(df):
     return df
 
 def getUserToken(id):
-    conn = sqlite3.connect("trades.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT auth_token,broker_name FROM user_audit where user_id = ?", (id,))
-    out = cursor.fetchall()
-    if len(out) == 0:
-        return None, None
-    else:
-        token = out[0][0]
-        broker = out[0][1]
+    try:
+        logging.info(f"Getting token for user {id}")
+        conn = sqlite3.connect("trades.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT auth_token,broker_name FROM user_audit where user_id = ?", (id,))
+        out = cursor.fetchall()
+        if len(out) == 0:
+            logging.error(f"User {id} not found")
+            return None, None
+        else:
+            logging.info(f"User {id} found")
+            token = out[0][0]
+            broker = out[0][1]
 
-    conn.close()
-    return token , broker
+        conn.close()
+        return token , broker
+    except Exception as e:
+        logging.error(f"Error in getting token for user {id} : {e}")
+        raise
     
 
     

@@ -30,6 +30,7 @@ def get_from_cache(key):
     if key in cache:
         value, expiry_time = cache[key]
         if datetime.now() < expiry_time:
+            logging.info("Cache hit")
             return value  # Return if not expired
         else:
             del cache[key]  # Remove expired entry
@@ -87,6 +88,7 @@ def home():
 @app.route('/login')
 def login():
     session.clear()
+    logging.info("Redirecting to Google login page")
     return oauth.google.authorize_redirect(url_for('callback', _external=True))
 
 @app.route('/login/callback')
@@ -292,6 +294,9 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 @login_required
 def dashboard():
     try:
+        logging.info(f"User {current_user.email} logged in")
+        # add current user to the session
+        session['user'] = current_user.email
         token,broker = getUserToken(current_user.email)
         data = process_trade_data(current_user.email,token,broker,'all')
         return render_template('index.html', **data)
@@ -386,4 +391,5 @@ def stock_details_inner(account_id, symbol):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))  # Render provides PORT as an environment variable
+    logging.info(f"Starting app on port: {port}")
     app.run(host="0.0.0.0", port=port)
