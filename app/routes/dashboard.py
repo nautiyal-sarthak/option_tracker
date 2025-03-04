@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from flask_login import login_required, current_user
 from ..utils.data import process_trade_data
+from flask import session
 
 bp = Blueprint('dashboard', __name__)
 
@@ -9,6 +10,8 @@ bp = Blueprint('dashboard', __name__)
 def dashboard():
     try:
         data = process_trade_data(current_user.email, current_user.token, current_user.broker, 'all')
+        session['filter_type'] = 'all'
+
         return render_template('index.html', **data)
     except Exception as e:
         error_message = str(e)
@@ -21,6 +24,7 @@ def dashboard():
 def get_data():
     try:
         filter_type = request.args.get('filter', 'all')
+        session['filter_type'] = filter_type
         data = process_trade_data(current_user.email, filter_type=filter_type)
         return data
     except Exception as e:

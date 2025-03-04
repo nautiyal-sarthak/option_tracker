@@ -1,4 +1,3 @@
-from .cache import get_from_cache, set_to_cache
 from ..brokers.broker_ibkr import IBKRBroker
 from ..brokers.broker_quest import QuestradeBroker
 from collections import defaultdict
@@ -10,6 +9,7 @@ import pandas as pd
 import logging
 import numpy as np
 from datetime import datetime, timedelta, date
+from flask import session
 
 
 
@@ -265,17 +265,12 @@ def process_wheel_trades(df):
     return df
 
 def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
-    global global_trade_info
-    global global_filter_type
-
-    global_filter_type = filter_type
-
     try:
-        cached_data = get_from_cache(email)
-        if cached_data:
-            print("Loaded from cache")
-            trade_data = cached_data
-        else:
+        # check if session['master_trade_data'] is populated
+        # if so, return the data from the session
+        # if not, fetch the data from the broker
+
+        if session.get('master_trade_data') is None:
             is_test = False
             if broker_name == 'IBKR':
                 broker = IBKRBroker(token,is_test)
@@ -284,12 +279,15 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             else:
                 raise Exception(f"Broker '{broker_name}' is not supported.")
             trade_data = broker.get_data(email)
-            set_to_cache(email, trade_data)
 
-        df = pd.DataFrame([vars(trade) for trade in trade_data])
-        raw_df = transform_data(df)
-        processed_data = process_wheel_trades(raw_df)
-        global_trade_info = processed_data
+
+            df = pd.DataFrame([vars(trade) for trade in trade_data])
+            raw_df = transform_data(df)
+            processed_data = process_wheel_trades(raw_df)
+            session['master_trade_data'] = processed_data
+        else:
+            processed_data = session['master_trade_data']
+
 
         # Apply time filter
         filtered_data = filter_by_time_period(processed_data, filter_type)
