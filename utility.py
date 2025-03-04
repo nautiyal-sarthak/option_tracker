@@ -1,7 +1,6 @@
 import pandas as pd
 import logging
 import numpy as np
-import sqlite3
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -257,20 +256,6 @@ def process_wheel_trades(df):
     df['is_win'] = (df['net_premium'] > 0) & (df['number_of_assign_contract'] == 0) & (df['number_of_sold_contract'] == 0) & (df['is_closed'] == True)
 
     return df
-
-def getUserToken(id):
-    conn = sqlite3.connect("trades.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT auth_token,broker_name FROM user_audit where user_id = ?", (id,))
-    out = cursor.fetchall()
-    if len(out) == 0:
-        return None, None
-    else:
-        token = out[0][0]
-        broker = out[0][1]
-
-    conn.close()
-    return token , broker
 
 
 
