@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from entity import trade
+from app.models import trade
 
 class BaseBroker(ABC):
     

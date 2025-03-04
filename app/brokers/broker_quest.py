@@ -1,8 +1,8 @@
-from brokers.base_broker import BaseBroker
+from .base_broker import BaseBroker
 import requests
 import json
 import time
-from entity.trade import Trade
+from app.models.trade import Trade
 import logging
 from database import *  
 from datetime import date, datetime,timedelta

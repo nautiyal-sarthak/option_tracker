@@ -1,5 +1,5 @@
 import sqlite3
-from entity.trade import Trade
+from app.models.trade import Trade
 
 DB_NAME = "trades.db"
 
