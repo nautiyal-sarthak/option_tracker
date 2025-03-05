@@ -4,7 +4,7 @@ import json
 import time
 from app.models.trade import Trade
 import logging
-from database import *  
+from supabase import *  
 from datetime import date, datetime,timedelta
 import re
 from flask_login import login_user, logout_user, login_required, current_user

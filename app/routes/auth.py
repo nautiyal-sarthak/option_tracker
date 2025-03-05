@@ -1,7 +1,7 @@
 from flask import Blueprint, redirect, url_for, session, render_template , g, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from authlib.integrations.flask_client import OAuth
-from database import getUserToken, update_refresh_token
+from supabase import getUserToken, update_refresh_token
 from ..models.user import User
 from app.extensions import oauth
 from app import user_dict
@@ -14,7 +14,7 @@ bp = Blueprint('auth', __name__)
 @bp.route('/')
 def home():
     current_app.logger.info('loading home page')
-    from database import check_and_create_table
+    from supabase import check_and_create_table
     check_and_create_table()
     return 'Welcome! <a href="/login">Login with Google</a>'
 

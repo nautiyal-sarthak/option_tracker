@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import time
 from app.models.trade import Trade
 import logging
-from database import *  
+from supabase import *  
 from datetime import date, datetime
 from flask import current_app
 

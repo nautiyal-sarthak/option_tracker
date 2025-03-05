@@ -7,5 +7,6 @@ flask-login
 authlib
 flask_session
 python-dotenv
+psycopg2-binary
 
 
