@@ -47,8 +47,8 @@ def logout():
 @bp.route('/provide_token', methods=['GET', 'POST'])
 @login_required
 def provide_token():
-    current_app.logger.info('Updating the token')
     if request.method == 'POST':
+        current_app.logger.info('Updating the token')
         token = request.form.get('token')
         update_refresh_token(current_user.email, token)
         current_user.token = token
