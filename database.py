@@ -1,5 +1,5 @@
 import sqlite3
-from entity.trade import Trade
+from app.models.trade import Trade
 
 DB_NAME = "trades.db"
 
@@ -131,21 +131,22 @@ def insert_trades(trades,email):
 
     print(f"Inserted {len(trades)} trades successfully!")    
 
-
-def update_refresh_token(old_token, new_token):
-    """Update the refresh token for a user."""
-    conn = get_db_connection()
+def getUserToken(id):
+    conn = sqlite3.connect("trades.db")
     cursor = conn.cursor()
+    cursor.execute("SELECT auth_token,broker_name FROM user_audit where user_id = ?", (id,))
+    out = cursor.fetchall()
+    if len(out) == 0:
+        return None, None
+    else:
+        token = out[0][0]
+        broker = out[0][1]
 
-    try:
-        cursor.execute("UPDATE user_audit SET auth_token = ? WHERE auth_token = ?", (new_token, old_token))
-        conn.commit()
-    except Exception as e:
-        print(f"Error updating refresh token: {e}")
-    finally:
-        conn.close()
+    conn.close()
+    return token , broker
 
-def update_refresh_token_1(user, new_token):
+def update_refresh_token(user, new_token):
+
     """Update the refresh token for a user."""
     conn = get_db_connection()
     cursor = conn.cursor()
