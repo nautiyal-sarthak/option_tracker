@@ -25,6 +25,7 @@ def login():
 
 @bp.route('/login/callback')
 def callback():
+    current_app.logger.info('in callback')
     token = oauth.google.authorize_access_token()
     user_info = oauth.google.get('userinfo').json()
     user_id = user_info['id']

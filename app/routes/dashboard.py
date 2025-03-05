@@ -24,7 +24,7 @@ def dashboard():
 @login_required
 def get_data():
     try:
-        current_app.logger.info('fetching user data')
+        current_app.logger.info('fetching user data with filter' + request.args.get('filter', 'all'))
         filter_type = request.args.get('filter', 'all')
         session['filter_type'] = filter_type
         data = process_trade_data(current_user.email, filter_type=filter_type)

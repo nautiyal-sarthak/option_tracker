@@ -8,6 +8,7 @@ from database import *
 from datetime import date, datetime,timedelta
 import re
 from flask_login import login_user, logout_user, login_required, current_user
+from flask import current_app
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,10 +26,11 @@ class QuestradeBroker(BaseBroker):
         params = {"grant_type": "refresh_token", "refresh_token": self.refresh_token}
         
         try:
+            current_app.logger.info('authenticating with Questrade')
             response = requests.post(self.auth_url, params=params).json()  # Use POST instead of GET
             
             if "access_token" not in response:
-                logging.error("Authentication failed. Check refresh token.")
+                current_app.logger.error("Failed to authenticate with Questrade API")
                 raise Exception("Failed to authenticate with Questrade API")
 
             # update the refrech token in the database
@@ -38,26 +40,33 @@ class QuestradeBroker(BaseBroker):
             self.access_token = response["access_token"]
             self.api_server = response["api_server"]
 
-            logging.info("Successfully authenticated with Questrade API")
+            current_app.logger.info('authentication successful')
             return self.access_token, self.api_server
 
         except requests.exceptions.RequestException as e:
-            logging.error(f"Network error during authentication: {e}")
+            current_app.logger.error(f"Network error during authentication: {e}")
             raise Exception("Network error during authentication")
 
     def get_account_ids(self):
-        """Fetch the first account ID available."""
-        headers = {"Authorization": f"Bearer {self.access_token}"}
-        response = requests.get(f"{self.api_server}v1/accounts", headers=headers).json()
-        if "accounts" not in response or not response["accounts"]:
-            logging.error("No accounts found.")
-            raise Exception("No accounts available")
-        return response["accounts"]
+        try:
+            """Fetch the first account ID available."""
+            current_app.logger.info('fetching account IDs')
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            response = requests.get(f"{self.api_server}v1/accounts", headers=headers).json()
+            if "accounts" not in response or not response["accounts"]:
+                current_app.logger.error("No accounts available")
+                raise Exception("No accounts available")
+            current_app.logger.info('account IDs fetched' + str(response["accounts"]))
+            return response["accounts"]
+        except Exception as e:
+            current_app.logger.error(f"Failed to get account IDs: {e}")
+            raise
 
 
 
     def send_request(self, db_max_date):
         try:
+            current_app.logger.info('sending request to Questrade to get the data after ' + str(db_max_date))
             """Fetch all historical trade executions from Questrade API."""
             self.authenticate()  # Ensure fresh token
             account_ids = self.get_account_ids()
@@ -78,11 +87,12 @@ class QuestradeBroker(BaseBroker):
                 start_time_str = start_date.strftime("%Y-%m-%dT00:00:00-05:00")
                 end_time_str = next_month.strftime("%Y-%m-%dT23:59:59-05:00")
                 params = {"startTime": start_time_str, "endTime": end_time_str}
+                current_app.logger.info('fetching data from ' + start_time_str + ' to ' + end_time_str)
 
                 for account_id in account_ids:
                     url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
                     response = requests.get(url, headers=headers, params=params).json()
-
+                    current_app.logger.info('Number of trades fetched for : ' + account_id + "and date " +  start_time_str + ' to ' + end_time_str + str(len(response.get('executions', []))))
                     if "executions" in response:
                         execution_elements = response['executions']
                         for element in execution_elements:
@@ -96,7 +106,7 @@ class QuestradeBroker(BaseBroker):
 
             return trades
         except Exception as e:
-            logging.error(f"Failed to fetch data: {e}")
+            current_app.logger.error(f"Failed to send request to Questrade: {e}")
             raise Exception(e)
 
 
