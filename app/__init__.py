@@ -1,10 +1,19 @@
 from flask import Flask
 from .config import Config
 from .extensions import session, login_manager, oauth
+import logging
+from logging import Formatter
 
 
 # Initialize the user dictionary
 user_dict = {}
+
+# Custom filter to inject user_id into logs
+class UserIDFilter(logging.Filter):
+    def filter(self, record):
+        from flask_login import current_user
+        record.user_id = current_user.email if current_user.is_authenticated else 'N/A'
+        return True
 
 def create_app():
     app = Flask(__name__)
@@ -17,6 +26,18 @@ def create_app():
     oauth.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.init_app(app)
+
+    # Configure logging
+    log_format = '%(asctime)s - %(levelname)s - %(user_id)s - %(message)s'
+    handler = logging.StreamHandler()  # Use FileHandler for file logging if preferred
+    handler.setFormatter(Formatter(log_format))
+    handler.addFilter(UserIDFilter())
+
+    # Clear default handlers and set custom handler
+    app.logger.handlers.clear()
+    app.logger.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
+    app.logger.propagate = False
 
 
     # Configure Google OAuth

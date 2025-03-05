@@ -7,6 +7,7 @@ import logging
 from database import *  
 from datetime import date, datetime,timedelta
 import re
+from flask_login import login_user, logout_user, login_required, current_user
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,7 +32,7 @@ class QuestradeBroker(BaseBroker):
                 raise Exception("Failed to authenticate with Questrade API")
 
             # update the refrech token in the database
-            update_refresh_token(self.refresh_token,response.get("refresh_token"))
+            update_refresh_token(current_user.email,response.get("refresh_token"))
             # ✅ Save the NEW refresh token for future use
             self.refresh_token = response.get("refresh_token", self.refresh_token)  
             self.access_token = response["access_token"]

@@ -131,19 +131,6 @@ def insert_trades(trades,email):
 
     print(f"Inserted {len(trades)} trades successfully!")    
 
-def update_refresh_token(old_token, new_token):
-    """Update the refresh token for a user."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("UPDATE user_audit SET auth_token = ? WHERE auth_token = ?", (new_token, old_token))
-        conn.commit()
-    except Exception as e:
-        print(f"Error updating refresh token: {e}")
-    finally:
-        conn.close()
-
 def getUserToken(id):
     conn = sqlite3.connect("trades.db")
     cursor = conn.cursor()
@@ -158,7 +145,7 @@ def getUserToken(id):
     conn.close()
     return token , broker
 
-def update_refresh_token_1(user, new_token):
+def update_refresh_token(user, new_token):
 
     """Update the refresh token for a user."""
     conn = get_db_connection()

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for,current_app
 from flask_login import login_required, current_user
 from ..utils.data import process_trade_data
 from flask import session
@@ -9,6 +9,7 @@ bp = Blueprint('dashboard', __name__)
 @login_required
 def dashboard():
     try:
+        current_app.logger.info('loading the dashboard')
         data = process_trade_data(current_user.email, current_user.token, current_user.broker, 'all')
         session['filter_type'] = 'all'
 
@@ -23,6 +24,7 @@ def dashboard():
 @login_required
 def get_data():
     try:
+        current_app.logger.info('fetching user data')
         filter_type = request.args.get('filter', 'all')
         session['filter_type'] = filter_type
         data = process_trade_data(current_user.email, filter_type=filter_type)

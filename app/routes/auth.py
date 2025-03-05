@@ -1,15 +1,19 @@
-from flask import Blueprint, redirect, url_for, session, render_template
-from flask_login import login_user, logout_user, login_required
+from flask import Blueprint, redirect, url_for, session, render_template , g, request, current_app
+from flask_login import login_user, logout_user, login_required, current_user
 from authlib.integrations.flask_client import OAuth
-from database import getUserToken, update_refresh_token_1
+from database import getUserToken, update_refresh_token
 from ..models.user import User
 from app.extensions import oauth
 from app import user_dict
+import logging
+from logging import Formatter
+
 
 bp = Blueprint('auth', __name__)
 
 @bp.route('/')
 def home():
+    current_app.logger.info('loading home page')
     from database import check_and_create_table
     check_and_create_table()
     return 'Welcome! <a href="/login">Login with Google</a>'
@@ -34,6 +38,7 @@ def callback():
 @bp.route('/logout')
 @login_required
 def logout():
+    current_app.logger.info('logging out')
     logout_user()
     session.clear()
     return redirect(url_for('auth.home'))
@@ -41,11 +46,10 @@ def logout():
 @bp.route('/provide_token', methods=['GET', 'POST'])
 @login_required
 def provide_token():
-    from flask import request, current_user
-
+    current_app.logger.info('Updating the token')
     if request.method == 'POST':
         token = request.form.get('token')
-        update_refresh_token_1(current_user.email, token)
+        update_refresh_token(current_user.email, token)
         current_user.token = token
         return redirect(url_for('dashboard.dashboard'))
     return render_template('provide_token.html')

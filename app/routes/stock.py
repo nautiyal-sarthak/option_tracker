@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, current_app
 from flask_login import login_required
 from ..utils.data import *
 import pandas as pd
@@ -9,6 +9,7 @@ bp = Blueprint('stock', __name__)
 @bp.route('/account/<account_id>/symbol/<symbol>')
 @login_required
 def stock_details_inner(account_id, symbol):
+    current_app.logger.info('fetching the details for the stock ' + symbol)
     if session.get('master_trade_data') is None:
         return "Stock data is not available yet. Please try again later."
     

@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Hi, {{ current_user.name }}!</h1>
-    <form method="POST" action="{{ url_for('provide_token') }}">
+    <form method="POST" action="{{ url_for('auth.provide_token') }}">
         <label for="token">Questrade Token:</label>
         <input type="text" id="token" name="token" required>
         <button type="submit">Submit</button>
