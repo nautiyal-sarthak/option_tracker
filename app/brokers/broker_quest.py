@@ -92,7 +92,7 @@ class QuestradeBroker(BaseBroker):
                 for account_id in account_ids:
                     url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
                     response = requests.get(url, headers=headers, params=params).json()
-                    current_app.logger.info('Number of trades fetched for : ' + account_id + "and date " +  start_time_str + ' to ' + end_time_str + str(len(response.get('executions', []))))
+            
                     if "executions" in response:
                         execution_elements = response['executions']
                         for element in execution_elements:
