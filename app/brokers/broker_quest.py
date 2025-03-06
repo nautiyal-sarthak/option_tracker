@@ -161,6 +161,7 @@ class QuestradeBroker(BaseBroker):
                 strike = details['strike_price']
                 asset_category = "OPT"
                 option_id = details['underlying']
+                openCloseIndicator = str(trade["side"][2]).upper()
             else:
                 stock = symbol
                 put_call = ""
@@ -168,6 +169,7 @@ class QuestradeBroker(BaseBroker):
                 expiry = ""
                 asset_category = "STK"
                 option_id = ""
+                openCloseIndicator = "C"
 
             
             obj = Trade(
@@ -177,7 +179,7 @@ class QuestradeBroker(BaseBroker):
                     symbol=stock,
                     putCall=put_call,
                     buySell=str(trade["side"][0]).upper(),
-                    openCloseIndicator=str(trade["side"][2]).upper(),  # Not available in Questrade API
+                    openCloseIndicator=openCloseIndicator,
                     strike=strike,
                     expiry=expiry,
                     quantity=str(trade["quantity"]),  # Ensure string if your Trade class expects it
