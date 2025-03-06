@@ -287,6 +287,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             raw_df = transform_data(df)
             current_app.logger.info('processing wheel trades')
             processed_data = process_wheel_trades(raw_df)
+            session['min_trade_data'] =  min(processed_data['trade_open_date'])
             session['master_trade_data'] = processed_data
         else:
             current_app.logger.info('using data from session')
@@ -374,6 +375,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             account_dict[item['accountId']].append(item)
 
         data = {
+            'oldest_date': session['min_trade_data'],
             'total_premium_collected': total_premium_collected,
             'total_premium_collected_open': total_premium_collected_open,
             'total_premium_formated': total_premium_formated,
