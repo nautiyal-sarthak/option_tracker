@@ -6,7 +6,7 @@ from app.models.trade import Trade
 import logging
 from supabase import *  
 from datetime import date, datetime
-from flask import current_app
+from flask import current_app,session
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -124,23 +124,25 @@ class IBKRBroker(BaseBroker):
 
     def get_data(self,email):
         try:
-            if self.is_test:
-                current_app.logger.info('fetching test data')
-                xml_data = self.get_test_data()
-                data = self.parse_data(xml_data)
-            else:
-                current_app.logger.info('fetching data from IBKR')
-                refCode = self.send_request()
-                time.sleep(20)
-                xml_data = self.get_statement(refCode)
-                max_date = get_max_trade_date(email)
-                current_app.logger.info(f"older max_date: {max_date}")
-                delta_data = self.parse_data(xml_data,max_date)
-                if delta_data:
-                    insert_trades(delta_data,email)
+            if session.get('adhoc_email'):
+                email = session.get('adhoc_email')
                 data = get_all_trades(email)
-
-                
+            else:
+                if self.is_test:
+                    current_app.logger.info('fetching test data')
+                    xml_data = self.get_test_data()
+                    data = self.parse_data(xml_data)
+                else:
+                    current_app.logger.info('fetching data from IBKR')
+                    refCode = self.send_request()
+                    time.sleep(20)
+                    xml_data = self.get_statement(refCode)
+                    max_date = get_max_trade_date(email)
+                    current_app.logger.info(f"older max_date: {max_date}")
+                    delta_data = self.parse_data(xml_data,max_date)
+                    if delta_data:
+                        insert_trades(delta_data,email)
+                    data = get_all_trades(email)
             
             return data
         except Exception as e:
