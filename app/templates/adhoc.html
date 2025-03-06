@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adhoc</title>
+</head>
+<body>
+    <h1>Hi, {{ current_user.name }}!</h1>
+    <form method="POST" action="{{ url_for('auth.adhoc') }}">
+        <label for="email">Email:</label>
+        <input type="text" id="email" name="email" required>
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>
