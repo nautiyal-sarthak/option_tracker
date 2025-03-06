@@ -9,7 +9,7 @@ import pandas as pd
 import logging
 import numpy as np
 from datetime import datetime, timedelta, date
-from flask import session
+from flask import session,current_app
 
 
 
@@ -269,8 +269,9 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         # check if session['master_trade_data'] is populated
         # if so, return the data from the session
         # if not, fetch the data from the broker
-
+        current_app.logger.info('fetching user data with filter' + filter_type)
         if session.get('master_trade_data') is None:
+            current_app.logger.info('fetching data from broker')
             is_test = False
             if broker_name == 'IBKR':
                 broker = IBKRBroker(token,is_test)
@@ -282,10 +283,13 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 
 
             df = pd.DataFrame([vars(trade) for trade in trade_data])
+            current_app.logger.info('transforming data')
             raw_df = transform_data(df)
+            current_app.logger.info('processing wheel trades')
             processed_data = process_wheel_trades(raw_df)
             session['master_trade_data'] = processed_data
         else:
+            current_app.logger.info('using data from session')
             processed_data = session['master_trade_data']
 
 
