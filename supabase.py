@@ -57,8 +57,8 @@ def check_and_create_table():
         
         # Insert users if they do not exist
         users = [
-            ('nautiyal.sarthak@gmail.com', '121034539652171842836741', 'IBKR'),
-            ('nauty.om@gmail.com', 'jhjIZqExuB8_YAboAWHh-1Y8E-wY3IOr0', 'Quest'),
+            # ('nautiyal.sarthak@gmail.com', '121034539652171842836741', 'IBKR'),
+            # ('nauty.om@gmail.com', 'jhjIZqExuB8_YAboAWHh-1Y8E-wY3IOr0', 'Quest'),
             ('sahil.bhola2@gmail.com', 'dsgGZzzheE9bbGdlmMQ1wGWkGQ2hAZSn0', 'Quest')
         ]
         for user in users:
