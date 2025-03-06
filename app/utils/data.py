@@ -396,6 +396,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
     
 def filter_by_time_period(df, filter_type):
     today = datetime.now()
+    end_date = today
     
     if filter_type == '15days':
         start_date = today - timedelta(days=15)
@@ -410,10 +411,10 @@ def filter_by_time_period(df, filter_type):
     elif filter_type == 'lastyear':    
         start_date = datetime(today.year - 1, 1, 1)  # January 1st of the previous year
         end_date = datetime(today.year - 1, 12, 31)
-        return df[(df['trade_open_date'] >= start_date) & (df['trade_open_date'] < end_date)]
     elif filter_type == 'all':
         return df
     else:
         start_date = df['trade_open_date'].min()
     
-    return df[df['trade_open_date'] >= start_date]
+
+    return df[(df['trade_open_date'] >= start_date) & (df['trade_open_date'] <= end_date)]
