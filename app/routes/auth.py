@@ -37,6 +37,7 @@ def callback():
     user_id = user_info['id']
     token, broker = getUserToken(user_info['email'])
     if token is None:
+        current_app.logger.error('User %s not found in the database. Please contact the administrator.', user_info['email'])
         return 'User ' + user_info['email'] + ' not found in the database. Please contact the administrator.'
     user = User(id=user_id, name=user_info['name'], email=user_info['email'], token=token, broker=broker)
     login_user(user)
