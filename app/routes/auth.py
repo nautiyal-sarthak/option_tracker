@@ -7,6 +7,8 @@ from app.extensions import oauth
 from app import user_dict
 import logging
 from logging import Formatter
+import secrets
+
 
 
 bp = Blueprint('auth', __name__)
@@ -20,8 +22,9 @@ def home():
 
 @bp.route('/login')
 def login():
-    session.clear()
-    return oauth.google.authorize_redirect(url_for('auth.callback', _external=True))
+    state = secrets.token_urlsafe(16)  # Generate a secure random state
+    session['state'] = state  # Store it in the session
+    return oauth.google.authorize_redirect(url_for('auth.callback', _external=True), state=state)
 
 @bp.route('/login/callback')
 def callback():
