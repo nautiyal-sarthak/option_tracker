@@ -13,6 +13,16 @@ import secrets
 
 bp = Blueprint('auth', __name__)
 
+@bp.route('/adhoc',methods=['GET', 'POST'])
+def adhoc():
+    if request.method == 'POST':
+        current_app.logger.info('starting the adhoc')
+        email = request.form.get('email')
+        session['adhoc_email'] = email
+        return redirect(url_for('dashboard.dashboard'))
+    return render_template('adhoc.html')
+
+
 @bp.route('/')
 def home():
     current_app.logger.info('loading home page')

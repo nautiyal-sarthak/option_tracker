@@ -9,6 +9,7 @@ from datetime import date, datetime,timedelta
 import re
 from flask_login import login_user, logout_user, login_required, current_user
 from flask import current_app
+from flask import session
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -194,21 +195,25 @@ class QuestradeBroker(BaseBroker):
     def get_data(self,email):
         try:
             """Main method to fetch and process trade data."""
-            if self.is_test:
-                test_json_data = self.get_test_data()
-                data = self.parse_data(test_json_data)
+            if session.get('adhoc_email'):
+                email = session.get('adhoc_email')
+                data = get_all_trades(email)
             else:
-                max_date = get_max_trade_date(email)
-                if max_date is None :
-                    max_date = datetime(2023, 1, 1)
+                if self.is_test:
+                    test_json_data = self.get_test_data()
+                    data = self.parse_data(test_json_data)
                 else:
-                    max_date = datetime.strptime(max_date,"%Y%m%d") 
+                    max_date = get_max_trade_date(email)
+                    if max_date is None :
+                        max_date = datetime(2023, 1, 1)
+                    else:
+                        max_date = datetime.strptime(max_date,"%Y%m%d") 
 
-                delta_data_raw = self.send_request(max_date)
-                delta_data = self.parse_data(delta_data_raw)
-                if delta_data:
-                    insert_trades(delta_data,email)  # Assuming this is from your database module
-                data = get_all_trades(email)  # Assuming this is from your database module
+                    delta_data_raw = self.send_request(max_date)
+                    delta_data = self.parse_data(delta_data_raw)
+                    if delta_data:
+                        insert_trades(delta_data,email)  # Assuming this is from your database module
+                    data = get_all_trades(email)  # Assuming this is from your database module
             
             return data
         except Exception as e:

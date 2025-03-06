@@ -270,7 +270,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         # if so, return the data from the session
         # if not, fetch the data from the broker
         current_app.logger.info('fetching user data with filter' + filter_type)
-        if session.get('master_trade_data') is None:
+        if (session.get('master_trade_data') is None) or session.get('adhoc_email'):
             current_app.logger.info('fetching data from broker')
             is_test = False
             if broker_name == 'IBKR':
