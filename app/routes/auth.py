@@ -31,14 +31,19 @@ def callback():
     current_app.logger.info('in callback')
     current_app.logger.info('Session state: %s', session.get('state'))
     current_app.logger.info('Request state: %s', request.args.get('state'))
-    token = oauth.google.authorize_access_token()
+    g_token = oauth.google.authorize_access_token()
+    current_app.logger.info('got the token from the callback')
     user_info = oauth.google.get('userinfo').json()
     user_id = user_info['id']
     token, broker = getUserToken(user_info['email'])
+    if token is None:
+        return 'User ' + user_info['email'] + ' not found in the database. Please contact the administrator.'
     user = User(id=user_id, name=user_info['name'], email=user_info['email'], token=token, broker=broker)
     login_user(user)
     # Store the user object in the dictionary
     user_dict[user_id] = user
+    current_app.logger.info('User %s logged in', user_info['email'])
+    current_app.logger.info('Redirecting to dashboard')
     return redirect(url_for('dashboard.dashboard'))
 
 @bp.route('/logout')
