@@ -321,7 +321,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         total_wins = account_summary['total_wins'].sum()
         total_trades = account_summary['total_trades'].sum()
         total_open_trades = account_summary['total_open_trades'].sum()
-        total_profit = total_premium_collected + p_l_stock
+        total_profit = total_premium_collected.round(2) + p_l_stock.round(2)
         total_loss = total_trades - total_wins
         win_percentage = ((total_wins / total_trades) * 100).round(2) if total_trades > 0 else 0
 
