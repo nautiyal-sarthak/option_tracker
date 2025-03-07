@@ -310,7 +310,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         ).reset_index()
 
         account_summary['total_loss'] = account_summary['total_trades'] - account_summary['total_wins']
-        account_summary['stock_sale_pl'] = account_summary['total_stock_sale_cost']
+        account_summary['stock_sale_pl'] = account_summary['total_stock_sale_cost'] + account_summary['total_stock_assign_cost']
         account_summary['total_profit'] = account_summary['total_premium_collected'] + account_summary['stock_sale_pl']
 
         # Total info

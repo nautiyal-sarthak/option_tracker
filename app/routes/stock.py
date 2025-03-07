@@ -37,7 +37,7 @@ def stock_details_inner(account_id, symbol):
         total_investment=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
     ).reset_index()
 
-    processed_data_global_stk_grp['stock_sale_pl'] = processed_data_global_stk_grp['total_stock_sale_cost']
+    processed_data_global_stk_grp['stock_sale_pl'] = processed_data_global_stk_grp['total_stock_sale_cost'] + processed_data_global_stk_grp['total_stock_assign_cost']
     processed_data_global_stk_grp['total_loss'] = processed_data_global_stk_grp['total_trades'] - processed_data_global_stk_grp['total_wins']
     processed_data_global_stk_grp['total_profit'] = processed_data_global_stk_grp['total_premium_collected'] + processed_data_global_stk_grp['stock_sale_pl']
     processed_data_global_stk_grp['w_L'] = (processed_data_global_stk_grp['total_wins'] / processed_data_global_stk_grp['total_trades']) * 100
@@ -67,8 +67,8 @@ def stock_details_inner(account_id, symbol):
     stocks_purchased_sold = stocks_purchased_sold[['buySell', 'assign_quantity', 'assign_date', 'assign_price_per_share', 
                                                    'sold_quantity', 'sold_price_per_share', 'sold_date']]
     stocks_purchased_sold = stocks_purchased_sold.round(2)
-    stocks_purchased_sold['total_assign_cost'] = stocks_purchased_sold['assign_quantity'] * stocks_purchased_sold['assign_price_per_share']
-    stocks_purchased_sold['total_sold_cost'] = stocks_purchased_sold['sold_quantity'] * stocks_purchased_sold['sold_price_per_share']
+    stocks_purchased_sold['total_assign_cost'] = (stocks_purchased_sold['assign_quantity'] * stocks_purchased_sold['assign_price_per_share']) * -1
+    stocks_purchased_sold['total_sold_cost'] = (stocks_purchased_sold['sold_quantity'] * stocks_purchased_sold['sold_price_per_share']) * -1
     stocks_purchased_sold["Qty"] = stocks_purchased_sold['assign_quantity'] + stocks_purchased_sold['sold_quantity']
     
     stocks_purchased_sold["trade_date"] = np.where(
