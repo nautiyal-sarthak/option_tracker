@@ -66,6 +66,20 @@ def stock_details_inner(account_id, symbol):
     stocks_purchased_sold = stock_data[~(stock_data['callorPut'].isin(["Call", "Put"]))]
     stocks_purchased_sold = stocks_purchased_sold[['buySell', 'assign_quantity', 'assign_date', 'assign_price_per_share', 
                                                    'sold_quantity', 'sold_price_per_share', 'sold_date']]
+    stocks_purchased_sold = stocks_purchased_sold.round(2)
+    stocks_purchased_sold['total_assign_cost'] = stocks_purchased_sold['assign_quantity'] * stocks_purchased_sold['assign_price_per_share']
+    stocks_purchased_sold['total_sold_cost'] = stocks_purchased_sold['sold_quantity'] * stocks_purchased_sold['sold_price_per_share']
+    stocks_purchased_sold["Qty"] = stocks_purchased_sold['assign_quantity'] + stocks_purchased_sold['sold_quantity']
+    
+    stocks_purchased_sold["trade_date"] = np.where(
+        stocks_purchased_sold['assign_date']==0,
+        stocks_purchased_sold['sold_date'],
+        stocks_purchased_sold['assign_date']
+        )
+    stocks_purchased_sold["total_cost"] = stocks_purchased_sold['total_assign_cost'] + stocks_purchased_sold['total_sold_cost']
+
+    stocks_purchased_sold = stocks_purchased_sold[['trade_date', 'buySell', 'Qty', 'total_cost']]
+    
 
     processed_data_global_stk_grp = processed_data_global_stk_grp.round(2)
     stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
