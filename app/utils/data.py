@@ -339,7 +339,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum')
         ).reset_index()
 
-        stock_summary['stock_sale_pl'] = stock_summary['total_stock_sale_cost']
+        stock_summary['stock_sale_pl'] = stock_summary['total_stock_sale_cost'] + stock_summary['total_stock_assign_cost']
         stock_summary['total_loss'] = stock_summary['total_trades'] - stock_summary['total_wins']
         stock_summary['total_profit'] = stock_summary['total_premium_collected'] + stock_summary['stock_sale_pl']
         stock_summary['w_L'] = np.where(
