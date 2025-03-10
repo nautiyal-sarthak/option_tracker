@@ -45,7 +45,7 @@ def stock_details_inner(account_id, symbol):
     processed_data_global_stk_grp['acb'] = np.where(
         processed_data_global_stk_grp['net_quantity'] == 0,
         0,
-        ((processed_data_global_stk_grp['total_stock_assign_cost'] * -1) - (processed_data_global_stk_grp['total_premium_collected'] / 100)) /
+        ((processed_data_global_stk_grp['stock_sale_pl'] * -1) - (processed_data_global_stk_grp['total_premium_collected'] / 100)) /
         processed_data_global_stk_grp['net_quantity']
     )
     processed_data_global_stk_grp['acb'] = processed_data_global_stk_grp['acb'].round(2)
@@ -69,6 +69,7 @@ def stock_details_inner(account_id, symbol):
     
     stocks_purchased_sold['total_assign_cost'] = (stocks_purchased_sold['assign_quantity'] * stocks_purchased_sold['assign_price_per_share']) * -1
     stocks_purchased_sold['total_sold_cost'] = (stocks_purchased_sold['sold_quantity'] * stocks_purchased_sold['sold_price_per_share']) * -1
+    stocks_purchased_sold['price_per_share'] = stocks_purchased_sold['assign_price_per_share'] + stocks_purchased_sold['sold_price_per_share']
     stocks_purchased_sold["Qty"] = stocks_purchased_sold['assign_quantity'] + stocks_purchased_sold['sold_quantity']
     
     stocks_purchased_sold["trade_date"] = np.where(
@@ -78,7 +79,7 @@ def stock_details_inner(account_id, symbol):
         )
     stocks_purchased_sold["total_cost"] = stocks_purchased_sold['total_assign_cost'] + stocks_purchased_sold['total_sold_cost']
 
-    stocks_purchased_sold = stocks_purchased_sold[['trade_date', 'buySell', 'Qty', 'total_cost']]
+    stocks_purchased_sold = stocks_purchased_sold[['trade_date', 'buySell', 'Qty','price_per_share' ,'total_cost']]
     
 
     processed_data_global_stk_grp = processed_data_global_stk_grp.round(2)

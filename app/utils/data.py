@@ -293,6 +293,30 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             current_app.logger.info('using data from session')
             processed_data = session['master_trade_data']
 
+        # get open cost
+        open_positions = processed_data[(processed_data["assign_quantity"] > 0) | (processed_data['sold_quantity'] < 0) | ((processed_data['is_closed'] == False) & (processed_data['callorPut'] == 'Put'))]
+        open_positions = open_positions[['accountId','symbol','strike_price','number_of_contracts_sold','number_of_buyback','assign_quantity','net_assign_cost','sold_quantity','net_sold_cost']]
+        open_positions["net_open_contracts"] = open_positions['number_of_contracts_sold'] - open_positions['number_of_buyback']
+        open_positions["net_open_contracts_cost"] =  open_positions["net_open_contracts"] * open_positions["strike_price"] * 100
+        open_positions = open_positions[['accountId','symbol','net_open_contracts_cost','net_assign_cost','net_sold_cost']]
+        investment_per_stock = open_positions.groupby(['symbol','accountId']).agg({
+            'net_open_contracts_cost': 'sum',
+            'net_assign_cost': 'sum',
+            'net_sold_cost': 'sum'
+        }).reset_index()
+
+        # Calculate net money invested
+        # Net money invested = total money spent (outflows) - total money received (inflows)
+        investment_per_stock['net_money_invested'] = (
+            investment_per_stock['net_open_contracts_cost'] +  # Negative means money spent
+            investment_per_stock['net_assign_cost'] +         # Negative means money spent, positive means money received
+            investment_per_stock['net_sold_cost']             # Positive means money received
+        )
+
+        # Display the result
+        print(investment_per_stock[['symbol', 'net_money_invested']])
+
+        total_investment = investment_per_stock['net_money_invested'].sum()
 
         # Apply time filter
         filtered_data = filter_by_time_period(processed_data, filter_type)
@@ -348,6 +372,11 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             (stock_summary['total_wins'] / stock_summary['total_trades']) * 100
         )
         stock_summary['total_stock_quantity'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
+
+        stock_summary = stock_summary.merge(investment_per_stock, on=['symbol','accountId'], how='left')
+        stock_summary['net_money_invested'] = stock_summary['net_money_invested'].fillna(0)
+        stock_summary['net_money_invested_percent'] =  stock_summary['net_money_invested']/total_investment * 100
+        stock_summary = stock_summary.round(2)
 
         # Date-based aggregation
         date_summary = filtered_data.groupby(['accountId', 'symbol', 'trade_open_date']).agg(
