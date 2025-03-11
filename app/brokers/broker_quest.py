@@ -76,7 +76,7 @@ class QuestradeBroker(BaseBroker):
             trades = []
 
             # Start from the next day after the last recorded trade
-            start_date = db_max_date + timedelta(days=1)
+            start_date = db_max_date - timedelta(days=5)
             end_date = datetime.today() - timedelta(days=1)  # Yesterday's date
 
             while start_date < end_date:

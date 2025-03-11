@@ -5,7 +5,7 @@ import time
 from app.models.trade import Trade
 import logging
 from supabase import *  
-from datetime import date, datetime
+from datetime import date, datetime,timedelta
 from flask import current_app,session
 
 # Configure logging
@@ -82,6 +82,8 @@ class IBKRBroker(BaseBroker):
                 max_date = datetime(1900, 1, 1)
             else:
                 max_date = datetime.strptime(max_date,"%Y%m%d")
+                # subtract 5 days to get the last 5 days of data
+                max_date = max_date - timedelta(days=5)
 
             root = ET.fromstring(data)
             parsed_data = []

@@ -349,6 +349,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         total_loss = total_trades - total_wins
         win_percentage = ((total_wins / total_trades) * 100).round(2) if total_trades > 0 else 0
 
+        account_summary.fillna(0, inplace=True)
         account_summary = account_summary.round(2)
         # Stock level aggregation
         stock_summary = filtered_data.groupby(['accountId', 'symbol']).agg(
@@ -377,6 +378,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         stock_summary['net_money_invested'] = stock_summary['net_money_invested'].fillna(0)
         stock_summary['net_money_invested_percent'] =  stock_summary['net_money_invested']/total_investment * 100
         stock_summary = stock_summary.round(2)
+        stock_summary.fillna(0, inplace=True)
 
         # Date-based aggregation
         date_summary = filtered_data.groupby(['accountId', 'symbol', 'trade_open_date']).agg(

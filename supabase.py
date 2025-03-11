@@ -115,6 +115,8 @@ def insert_trades(trades, email):
                 user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
                 strike, expiry, quantity, tradePrice, commission, assetCategory
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
+                strike, expiry, quantity, tradePrice, commission, assetCategory) DO NOTHING
         """
 
         # Convert empty strings to None for numeric fields

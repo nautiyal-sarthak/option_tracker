@@ -51,6 +51,7 @@ def callback():
         return 'User ' + user_info['email'] + ' not found in the database. Please contact the administrator.'
     user = User(id=user_id, name=user_info['name'], email=user_info['email'], token=token, broker=broker)
     login_user(user)
+    session['master_trade_data'] = None
     # Store the user object in the dictionary
     user_dict[user_id] = user
     current_app.logger.info('User %s logged in', user_info['email'])
