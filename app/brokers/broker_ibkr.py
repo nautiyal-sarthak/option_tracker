@@ -102,7 +102,7 @@ class IBKRBroker(BaseBroker):
                                                 stock = trade_ele.attrib["underlyingSymbol"]
                                                 option_id = trade_ele.attrib["symbol"]
                                             
-                                            if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") > max_date and datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") < datetime.today()):
+                                            if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") > max_date):
                                                 obj = Trade(
                                                         option_id,trade_ele.attrib["tradeDate"], 
                                                         trade_ele.attrib["accountId"], 
