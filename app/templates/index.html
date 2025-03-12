@@ -101,6 +101,26 @@
                 <div class="account-details" style="display: block;">
                     <ul>
                         <div class="stock-container" data-account-id="{{ account.accountId }}">
+                            <!-- Dropdown Container -->
+                            <div class="sort-row">
+                                <div class="filter-container">
+                                    <label for="sort-options">Sort by:</label>
+                                    <select id="sort-options" onchange="sortStocks(this)">
+                                        <option value="premium">Premium</option>
+                                        <option value="invest">Invest %</option>
+                                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        <option value="win_percentage">Win %</option>
+                                    </select>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="filter-options">Filter by:</label>
+                                    <select id="filter-options" onchange="filterStocks(this)">
+                                        <option value="all">All</option>
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                            </div>                
                             {% for stock in account_stk_merge[account.accountId] %}
                             <div class="stock-card">
                                 <a href="/account/{{account.accountId}}/symbol/{{stock.symbol}}" class="stock-symbol">
@@ -296,6 +316,84 @@
             var details = element.nextElementSibling;
             details.style.display = details.style.display === "block" ? "none" : "block";
         }
+    </script>
+    <script>
+        function sortStocks(selectElement) {
+    const sortBy = selectElement.value;
+    const stockContainer = selectElement.closest('.stock-container');
+    const stockCards = Array.from(stockContainer.getElementsByClassName('stock-card'));
+
+    stockCards.sort((a, b) => {
+        let valA, valB;
+
+        if (sortBy === "alphabetical") {
+            return a.querySelector('.stock-symbol strong').textContent.localeCompare(
+                b.querySelector('.stock-symbol strong').textContent
+            );
+        } else if (sortBy === "premium") {
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(1) span').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(1) span').textContent) || 0;
+        } else if (sortBy === "invest") {
+            valA = parseFloat(a.querySelector('.stock-details span:last-child').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:last-child').textContent) || 0;
+        } else if (sortBy === "win_percentage") {  // Sorting by w_L
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(4)').textContent.match(/([\d.]+)/)?.[0]) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(4)').textContent.match(/([\d.]+)/)?.[0]) || 0;
+        }
+
+        return valB - valA; // Descending order
+    });
+
+    // Re-attach sorted elements to the container
+    stockContainer.innerHTML = `
+    <div class="sort-row">
+                                <div class="filter-container">
+                                    <label for="sort-options">Sort by:</label>
+                                    <select id="sort-options" onchange="sortStocks(this)">
+                                        <option value="premium">Premium</option>
+                                        <option value="invest">Invest %</option>
+                                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        <option value="win_percentage">Win %</option>
+                                    </select>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="filter-options">Filter by:</label>
+                                    <select id="filter-options" onchange="filterStocks(this)">
+                                        <option value="all">All</option>
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                            </div>  
+    `;
+    stockCards.forEach(card => stockContainer.appendChild(card));
+
+    // Restore selected option
+    stockContainer.querySelector('#sort-options').value = sortBy;
+}
+
+
+function filterStocks(selectElement) {
+    const filterBy = selectElement.value;
+    const stockContainer = selectElement.closest('.stock-container');
+    const stockCards = Array.from(stockContainer.getElementsByClassName('stock-card'));
+
+    stockCards.forEach(card => {
+        // Get the Open Trades value directly from the stock details section
+        const openTrades = parseInt(card.querySelector('.stock-details span:nth-child(7)').textContent.split(': ')[1]);
+
+        if (filterBy === "all") {
+            card.style.display = "block"; // Show all stocks
+        } else if (filterBy === "open" && openTrades > 0) {
+            card.style.display = "block"; // Show open stocks
+        } else if (filterBy === "closed" && openTrades === 0) {
+            card.style.display = "block"; // Show closed stocks
+        } else {
+            card.style.display = "none"; // Hide stocks that don't match
+        }
+    });
+}
+
     </script>
 
 </body>

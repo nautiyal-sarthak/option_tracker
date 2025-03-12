@@ -149,6 +149,17 @@ header h1 {
     width: 100%;
     box-sizing: border-box;
 }
+.sort-row {
+    background-color: #f8f8f8;
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    width: 100%;
+    box-sizing: border-box;
+}
 .left-section {
     display: flex;
     flex-direction: column; /* Stacks elements vertically */

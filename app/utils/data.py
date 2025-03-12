@@ -379,6 +379,8 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         stock_summary['net_money_invested_percent'] =  stock_summary['net_money_invested']/total_investment * 100
         stock_summary = stock_summary.round(2)
         stock_summary.fillna(0, inplace=True)
+        #sort the stock summary by total profit
+        stock_summary = stock_summary.sort_values(by='total_profit',ascending=False)
 
         # Date-based aggregation
         date_summary = filtered_data.groupby(['accountId', 'symbol', 'trade_open_date']).agg(
