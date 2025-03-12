@@ -79,31 +79,23 @@ class QuestradeBroker(BaseBroker):
             start_date = db_max_date - timedelta(days=5)
             end_date = datetime.today()  # Yesterday's date
 
-            while start_date < end_date:
-                # Get the next month's end date, ensuring it doesn't exceed today's date
-                next_month = start_date + timedelta(days=30)
-                if next_month > end_date:
-                    next_month = end_date  # Ensure we don't go beyond the available data
 
-                start_time_str = start_date.strftime("%Y-%m-%dT00:00:00-05:00")
-                end_time_str = next_month.strftime("%Y-%m-%dT23:59:59-05:00")
-                params = {"startTime": start_time_str, "endTime": end_time_str}
-                current_app.logger.info('fetching data from ' + start_time_str + ' to ' + end_time_str)
+            start_time_str = start_date.strftime("%Y-%m-%dT00:00:00-05:00")
+            end_time_str = end_date.strftime("%Y-%m-%dT23:59:59-05:00")
+            params = {"startTime": start_time_str, "endTime": end_time_str}
+            current_app.logger.info('fetching data from ' + start_time_str + ' to ' + end_time_str)
 
-                for account_id in account_ids:
-                    url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
-                    response = requests.get(url, headers=headers, params=params).json()
-            
-                    if "executions" in response:
-                        execution_elements = response['executions']
-                        for element in execution_elements:
-                            element['accountId'] = account_id['number']
-                            trades.append(element)
-                    else:
-                        logging.warning(f"No trades found for {start_time_str} to {end_time_str}")
-
-                # Move to the next month
-                start_date = next_month + timedelta(days=1)
+            for account_id in account_ids:
+                url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
+                response = requests.get(url, headers=headers, params=params).json()
+        
+                if "executions" in response:
+                    execution_elements = response['executions']
+                    for element in execution_elements:
+                        element['accountId'] = account_id['number']
+                        trades.append(element)
+                else:
+                    logging.warning(f"No trades found for {start_time_str} to {end_time_str}")
 
             return trades
         except Exception as e:
@@ -206,8 +198,8 @@ class QuestradeBroker(BaseBroker):
                     max_date = get_max_trade_date(email)
                     if max_date is None :
                         max_date = datetime(2023, 1, 1)
-                    else:
-                        max_date = datetime.strptime(max_date,"%Y%m%d") 
+                    
+                        
 
                     delta_data_raw = self.send_request(max_date)
                     delta_data = self.parse_data(delta_data_raw)
