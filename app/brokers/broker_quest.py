@@ -169,7 +169,7 @@ class QuestradeBroker(BaseBroker):
                 strike = ""
                 expiry = ""
                 asset_category = "STK"
-                option_id = details['orderId']
+                option_id = trade['orderId']
                 openCloseIndicator = "C"
 
             
