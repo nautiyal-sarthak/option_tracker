@@ -97,10 +97,10 @@ class IBKRBroker(BaseBroker):
                                         if (trade_ele.tag == "Trade" and trade_ele.attrib["symbol"] != "" and trade_ele.attrib["assetCategory"] in ['STK','OPT']):
                                             if trade_ele.attrib["assetCategory"] == "STK":
                                                 stock = trade_ele.attrib["symbol"]
-                                                option_id = ""
+                                                option_id = trade_ele.attrib["tradeID"]
                                             else:
                                                 stock = trade_ele.attrib["underlyingSymbol"]
-                                                option_id = trade_ele.attrib["symbol"]
+                                                option_id = trade_ele.attrib["tradeID"]
                                             
                                             if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") > max_date):
                                                 obj = Trade(
