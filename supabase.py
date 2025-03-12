@@ -26,9 +26,9 @@ def check_and_create_table():
         # Create 'trades' table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS trades (
-            id SERIAL PRIMARY KEY,
+            id SERIAL ,
             user_id VARCHAR(255),
-            optionId TEXT NOT NULL,
+            optionId TEXT NOT NULL PRIMARY KEY,
             tradeDate DATE NOT NULL,
             accountId TEXT NOT NULL,
             symbol TEXT NOT NULL,
@@ -115,13 +115,23 @@ def insert_trades(trades, email):
                 user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
                 strike, expiry, quantity, tradePrice, commission, assetCategory
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
-                strike, expiry, quantity, tradePrice, commission, assetCategory) DO NOTHING
+            ON CONFLICT (optionId) 
+            DO UPDATE SET optionId = trades.optionId
+            RETURNING *;
         """
 
-        # Convert empty strings to None for numeric fields
-        trade_tuples = [
-            (
+        conflict_insert_query = """
+            INSERT INTO trade_conflicts (
+                user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
+                strike, expiry, quantity, tradePrice, commission, assetCategory
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        """
+
+        supabase_conn = get_db_connection()
+        cursor = supabase_conn.cursor()
+
+        for trade in trades:
+            trade_tuple = (
                 email,
                 trade.optionId,
                 trade.tradeDate,
@@ -131,27 +141,30 @@ def insert_trades(trades, email):
                 trade.buySell,
                 trade.openCloseIndicator if trade.openCloseIndicator else None,
                 float(trade.strike) if trade.strike else None,
-                trade.expiry,
+                trade.expiry if trade.expiry != '' else None,
                 int(trade.quantity),
                 float(trade.tradePrice) if trade.tradePrice else None,
                 float(trade.commission) if trade.commission else None,
                 trade.assetCategory,
             )
-            for trade in trades
-        ]
 
-        # Execute batch insert
-        supabase_conn = get_db_connection()
-        cursor = supabase_conn.cursor()
-        cursor.executemany(insert_query, trade_tuples)
+            # Try inserting into `trades`
+            cursor.execute(insert_query, trade_tuple)
+            inserted_trade = cursor.fetchone()  # Get inserted row (if any)
+
+            if not inserted_trade:
+                # Conflict occurred, insert into `trade_conflicts`
+                cursor.execute(conflict_insert_query, trade_tuple)
+
         supabase_conn.commit()
         cursor.close()
         supabase_conn.close()
 
         current_app.logger.info(f'Inserted {len(trades)} trades successfully!')
     except Exception as e:
-        print(f"Error inserting trades: {e}")
+        current_app.logger.error(f"Error inserting trades: {e}")
         raise e
+
 
 
 def getUserToken(user_id):
