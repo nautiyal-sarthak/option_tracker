@@ -103,6 +103,7 @@
                         <div class="stock-container" data-account-id="{{ account.accountId }}">
                             <!-- Dropdown Container -->
                             <div class="sort-row">
+                                <div class="filter-container">
                                     <label for="sort-options">Sort by:</label>
                                     <select id="sort-options" onchange="sortStocks(this)">
                                         <option value="premium">Premium</option>
@@ -110,14 +111,15 @@
                                         <option value="alphabetical">Alphabetical (A-Z)</option>
                                         <option value="win_percentage">Win %</option>
                                     </select>
-                                    <div class="filter-container">
-                                        <label for="filter-options">Filter by:</label>
-                                        <select id="filter-options" onchange="filterStocks(this)">
-                                            <option value="all">All</option>
-                                            <option value="open">Open</option>
-                                            <option value="closed">Closed</option>
-                                        </select>
-                                    </div>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="filter-options">Filter by:</label>
+                                    <select id="filter-options" onchange="filterStocks(this)">
+                                        <option value="all">All</option>
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
                             </div>                
                             {% for stock in account_stk_merge[account.accountId] %}
                             <div class="stock-card">
@@ -345,14 +347,24 @@
     // Re-attach sorted elements to the container
     stockContainer.innerHTML = `
     <div class="sort-row">
-        <label for="sort-options">Sort by:</label>
-        <select id="sort-options" onchange="sortStocks(this)">
-            <option value="premium">Premium</option>
-            <option value="invest">Invest %</option>
-            <option value="alphabetical">Alphabetical (A-Z)</option>
-            <option value="win_percentage">Win %</option> <!-- Added Win % Sorting -->
-        </select>
-        </div>
+                                <div class="filter-container">
+                                    <label for="sort-options">Sort by:</label>
+                                    <select id="sort-options" onchange="sortStocks(this)">
+                                        <option value="premium">Premium</option>
+                                        <option value="invest">Invest %</option>
+                                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        <option value="win_percentage">Win %</option>
+                                    </select>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="filter-options">Filter by:</label>
+                                    <select id="filter-options" onchange="filterStocks(this)">
+                                        <option value="all">All</option>
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                            </div>  
     `;
     stockCards.forEach(card => stockContainer.appendChild(card));
 
