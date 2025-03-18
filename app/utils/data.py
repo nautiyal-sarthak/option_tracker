@@ -258,6 +258,10 @@ def process_wheel_trades(df):
                     (pd.to_numeric(df['number_of_contracts_sold']).abs() == pd.to_numeric(df['number_of_buyback'] + df['number_of_assign_contract'] + df['number_of_sold_contract']).abs()) 
                     | 
                     (df['expiry_date'].notna() & (df['expiry_date'] < today))  # Only compare if expiry_date is valid
+                    |
+                    (df['net_sold_cost'] > 0) 
+                    |
+                    (df['net_assign_cost'] > 0)
                     )   
      
     df['is_win'] = (df['net_premium'] > 0) & (df['number_of_assign_contract'] == 0) & (df['number_of_sold_contract'] == 0) & (df['is_closed'] == True)
@@ -383,22 +387,21 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         stock_summary = stock_summary.sort_values(by='total_profit',ascending=False)
 
         # Date-based aggregation
-        date_summary = filtered_data.groupby(['accountId', 'symbol', 'trade_open_date']).agg(
+        weekly_data = filtered_data[filtered_data['is_closed']]
+        # Calculate the week number of the month
+        weekly_data['week_of_month'] = weekly_data['trade_open_date'].dt.day.sub(1).floordiv(7).add(1)
+        # Create the year-month-week column
+        weekly_data['year_month_week'] = weekly_data['trade_open_date'].dt.strftime('%Y-%m') + "-W" + weekly_data['week_of_month'].astype(str)
+
+        weekly_data_grp = weekly_data.groupby(['accountId', 'symbol', 'year_month_week']).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum')
         ).reset_index()
-        date_summary['total_profit'] = date_summary['total_premium_collected'] + date_summary['total_stock_sale_cost']
-        date_summary['year'] = date_summary['trade_open_date'].dt.year
-        date_summary['month'] = date_summary['year'].astype(str) + "-" + date_summary['trade_open_date'].dt.month.astype(str)
-        date_summary['year_quarter'] = date_summary['trade_open_date'].dt.year.astype(str) + "-Q" + date_summary['trade_open_date'].dt.quarter.astype(str)
+
         
-        # Calculate the week number of the month
-        date_summary['week_of_month'] = date_summary['trade_open_date'].dt.day.sub(1).floordiv(7).add(1)
-
-        # Create the year-month-week column
-        date_summary['year_month_week'] = date_summary['trade_open_date'].dt.strftime('%Y-%m') + "-W" + date_summary['week_of_month'].astype(str)
-
-        profit_by_month = date_summary.groupby(['year_month_week']).agg(
+        weekly_data_grp['total_profit'] = weekly_data_grp['total_premium_collected'] + weekly_data_grp['total_stock_sale_cost']
+      
+        profit_by_month = weekly_data_grp.groupby(['year_month_week']).agg(
             total_profit=pd.NamedAgg(column='total_profit', aggfunc='sum')
         ).reset_index().sort_values('year_month_week')
 
