@@ -153,7 +153,7 @@ class QuestradeBroker(BaseBroker):
                 put_call = details['option_type']
                 strike = details['strike_price']
                 asset_category = "OPT"
-                option_id = details['orderId']
+                option_id = trade['orderId']
                 openCloseIndicator = str(trade["side"][2]).upper()
             else:
                 stock = symbol
