@@ -3,6 +3,7 @@ from psycopg2.extras import DictCursor
 from app.models.trade import Trade
 from flask import current_app
 import os
+import pandas as pd
 
 # Get database connection details from environment variables
 DB_URL = os.getenv("SUPABASE_DB_URL")
@@ -106,17 +107,56 @@ def get_all_trades(email):
     finally:
         conn.close()
 
+import pandas as pd
+
+def preprocess_trades(trades):
+    # Convert trade list to DataFrame
+    df = pd.DataFrame([{
+        "optionId": trade.optionId,
+        "tradeDate": trade.tradeDate,
+        "accountId": trade.accountId,
+        "symbol": trade.symbol,
+        "putCall": trade.putCall,
+        "buySell": trade.buySell,
+        "openCloseIndicator": trade.openCloseIndicator,
+        "strike": trade.strike,
+        "expiry": trade.expiry,
+        "quantity": trade.quantity,
+        "tradePrice": trade.tradePrice,
+        "commission": trade.commission,
+        "assetCategory": trade.assetCategory,
+    } for trade in trades])
+
+    # Convert appropriate columns to numeric (handling None values)
+    df["strike"] = pd.to_numeric(df["strike"], errors="coerce")
+    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
+    df["tradePrice"] = pd.to_numeric(df["tradePrice"], errors="coerce")
+    df["commission"] = pd.to_numeric(df["commission"], errors="coerce")
+
+    # Group by all columns except `quantity`, summing `quantity`
+    grouped_df = df.groupby([
+        "optionId", "tradeDate", "accountId", "symbol", "putCall",
+        "buySell", "openCloseIndicator", "strike", "expiry", 
+        "commission", "assetCategory"
+    ], dropna=False, as_index=False).agg(
+        {"quantity": "sum",
+         "tradePrice": "mean"})
+    
+
+    return grouped_df.to_dict(orient="records")  # Convert back to list of dicts
+
+
 def insert_trades(trades, email):
     try:
         current_app.logger.info('Inserting trades into Supabase')
+        grouped_trades = preprocess_trades(trades)
 
         insert_query = """
             INSERT INTO trades (
                 user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
                 strike, expiry, quantity, tradePrice, commission, assetCategory
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (optionId) 
-            DO UPDATE SET optionId = trades.optionId
+            ON CONFLICT (optionId) DO NOTHING
             RETURNING *;
         """
 
@@ -130,30 +170,28 @@ def insert_trades(trades, email):
         supabase_conn = get_db_connection()
         cursor = supabase_conn.cursor()
 
-        for trade in trades:
+        for trade in grouped_trades:
             trade_tuple = (
                 email,
-                trade.optionId,
-                trade.tradeDate,
-                trade.accountId,
-                trade.symbol,
-                trade.putCall if trade.putCall else None,
-                trade.buySell,
-                trade.openCloseIndicator if trade.openCloseIndicator else None,
-                float(trade.strike) if trade.strike else None,
-                trade.expiry if trade.expiry != '' else None,
-                int(trade.quantity),
-                float(trade.tradePrice) if trade.tradePrice else None,
-                float(trade.commission) if trade.commission else None,
-                trade.assetCategory,
+                trade['optionId'],
+                trade['tradeDate'],
+                trade['accountId'],
+                trade['symbol'],
+                trade['putCall'] if trade['putCall'] else None,
+                trade['buySell'],
+                trade['openCloseIndicator'] if trade['openCloseIndicator'] else None,
+                float(trade['strike']) if trade['strike'] else None,
+                trade['expiry']if trade['expiry'] != '' else None,
+                int(trade['quantity']),
+                float(trade['tradePrice']) if trade['tradePrice'] else 0,
+                float(trade['commission']) if trade['commission'] else 0,
+                trade['assetCategory'],
             )
 
-            # Try inserting into `trades`
             cursor.execute(insert_query, trade_tuple)
-            inserted_trade = cursor.fetchone()  # Get inserted row (if any)
 
-            if not inserted_trade:
-                # Conflict occurred, insert into `trade_conflicts`
+            if cursor.rowcount == 0:  # No row inserted → conflict occurred
+                current_app.logger.warning(f'Conflict detected for optionId {trade['optionId']}')
                 cursor.execute(conflict_insert_query, trade_tuple)
 
         supabase_conn.commit()

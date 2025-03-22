@@ -250,6 +250,9 @@ def process_wheel_trades(df):
     df = df.reset_index()
     # is open trade
 
+    df['net_sold_cost'] = pd.to_numeric(df['net_sold_cost'], errors='coerce').fillna(0.0).astype(float)
+    df['net_assign_cost'] = pd.to_numeric(df['net_assign_cost'], errors='coerce').fillna(0.0).astype(float)
+    df['net_premium'] = pd.to_numeric(df['net_premium'], errors='coerce').fillna(0.0).astype(float)
 
     today = pd.Timestamp.today().normalize()
     df['expiry_date'] = pd.to_datetime(df['expiry_date'], errors='coerce')  # Convert expiry_date to datetime safely
