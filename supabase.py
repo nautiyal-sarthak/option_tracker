@@ -191,7 +191,7 @@ def insert_trades(trades, email):
             cursor.execute(insert_query, trade_tuple)
 
             if cursor.rowcount == 0:  # No row inserted → conflict occurred
-                current_app.logger.warning(f'Conflict detected for optionId {trade['optionId']}')
+                #current_app.logger.warning(f'Conflict detected for optionId {trade['optionId']}')
                 cursor.execute(conflict_insert_query, trade_tuple)
 
         supabase_conn.commit()
