@@ -164,6 +164,11 @@ class QuestradeBroker(BaseBroker):
                 option_id = trade['orderId']
                 openCloseIndicator = "C"
 
+            if str(trade["side"][0]).upper() == 'S':
+                quantity=abs(trade["quantity"]) * -1
+            else:
+                quantity=abs(trade["quantity"])
+
             
             obj = Trade(
                     optionId=option_id,
@@ -175,9 +180,9 @@ class QuestradeBroker(BaseBroker):
                     openCloseIndicator=openCloseIndicator,
                     strike=strike,
                     expiry=expiry,
-                    quantity=str(trade["quantity"]),  # Ensure string if your Trade class expects it
+                    quantity=str(quantity),  # Ensure string if your Trade class expects it
                     tradePrice=str(trade["price"]),
-                    commission=str(trade["commission"]),
+                    commission=str(trade["commission"] * -1),
                     assetCategory=asset_category
                 )
             parsed_data.append(obj)

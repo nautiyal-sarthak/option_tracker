@@ -16,8 +16,8 @@ from flask import session,current_app
 def transform_data(df):
     df['tradeDate'] = pd.to_datetime(df['tradeDate'])
     df['tradePrice'] = pd.to_numeric(df['tradePrice']).abs()
-    df['commission'] = pd.to_numeric(df['commission']).abs()
-    df['quantity'] = pd.to_numeric(df['quantity']).abs()
+    df['commission'] = pd.to_numeric(df['commission'])
+    df['quantity'] = pd.to_numeric(df['quantity'])
     df['strike'] = pd.to_numeric(df['strike'])
     df['expiry'] = pd.to_datetime(df['expiry'])
 
@@ -59,7 +59,7 @@ def transform_data(df):
     # if the assetCatagory is option then multiply the trade price by 100
     df['total_premium'] = df.apply(lambda x: x['tradePrice']*100*x['quantity'] if x['assetCategory'] == 'Option' else x['tradePrice']* x['quantity'], axis=1)
     #df['total_premium'] = df.apply(lambda x: x['total_premium']* -1 if x['buySell'] == 'BUY' else x['total_premium'], axis=1)
-    df['total_premium'] = df['total_premium'] - df['commission']
+    df['total_premium'] = (df['total_premium'] - df['commission']) * -1
 
     return df
 
@@ -112,7 +112,7 @@ def process_wheel_trades(df):
                 "trade_open_date": row["tradeDate"],
                 "expiry_date": row["expiry"],
                 "strike_price": row["strike"],
-                "number_of_contracts_sold": row["quantity"] * -1,
+                "number_of_contracts_sold": row["quantity"],
                 "premium_per_contract": row["tradePrice"],
                 "net_buyback_price": None,
                 "number_of_buyback": None,
@@ -134,7 +134,7 @@ def process_wheel_trades(df):
             # Option Buyback (Closing trade)
             key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'])
             buybacks[key] = {
-                "total_premium": row["total_premium"] * -1,
+                "total_premium": row["total_premium"],
                 "number_of_buyback": row["quantity"],
                 "buyback_date": row["tradeDate"]
             }
@@ -147,7 +147,7 @@ def process_wheel_trades(df):
                 "quantity": row["quantity"],
                 "tradeDate": row["tradeDate"],
                 "number_of_assign_contract":row["quantity"],
-                "net_assign_cost":row["total_premium"] * -1
+                "net_assign_cost":row["total_premium"]
             }
 
         elif row["assetCategory"] == "Stock" and row["buySell"] == "SELL":
@@ -155,9 +155,9 @@ def process_wheel_trades(df):
             key = (symbol, 'Call', row["tradePrice"],row["tradeDate"], row['accountId'])
             stock_sales[key] = {
                 "sold_price": row["tradePrice"],  
-                "quantity": row["quantity"] * -1,
+                "quantity": row["quantity"] ,
                 "tradeDate": row["tradeDate"],
-                "number_of_sold_contract": row["quantity"] * -1,
+                "number_of_sold_contract": row["quantity"] ,
                 "net_sold_cost": row["total_premium"]
             }
 
