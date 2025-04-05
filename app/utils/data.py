@@ -95,13 +95,14 @@ def process_wheel_trades(df):
     assigned_stocks = {}
     stock_sales = {}
     buybacks = {}
+    sellbacks = {}
     
 
     # Iterate over trades
     for _, row in df.iterrows():
         symbol = row["symbol"]
         
-        if row["assetCategory"] == "Option" and row["buySell"] == "SELL":
+        if row["assetCategory"] == "Option" and row["openCloseIndicator"] == "Open":
             # Option Sale Entry
             key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'])
             processed_trades[key] ={
@@ -161,13 +162,30 @@ def process_wheel_trades(df):
                 "net_sold_cost": row["total_premium"]
             }
 
+        elif row["assetCategory"] == "Option" and row["buySell"] == "SELL" and row["openCloseIndicator"] == "Close":
+            # sellback a bought option
+            key = (symbol, 'Call', row["strike"], row["expiry"], row['accountId'])
+            sellbacks[key] = {
+                "total_premium": row["total_premium"],
+                "number_of_buyback": row["quantity"],
+                "buyback_date": row["tradeDate"]
+            }
+
+
     # Update processed trades with buybacks, rolls, assignments, early exercises, and P/L
     for trade_key in processed_trades:
         trade = processed_trades[trade_key]
 
         assigned_stocks_key = find_matching_key(trade_key,assigned_stocks,trade['trade_open_date'])
         stock_sales_key = find_matching_key(trade_key,stock_sales,trade['trade_open_date'])
-        
+    
+        # add sellback if it exists
+        if trade_key in sellbacks:
+            trade["net_buyback_price"] = sellbacks[trade_key]['total_premium']
+            trade["net_premium"] = trade["net_premium"] + sellbacks[trade_key]['total_premium']
+            trade["number_of_buyback"] = sellbacks[trade_key]['number_of_buyback']
+            trade["buyback_date"] = sellbacks[trade_key]['buyback_date']
+
         # Add buyback price if it exists
         if trade_key in buybacks:
             trade["net_buyback_price"] = buybacks[trade_key]['total_premium']
