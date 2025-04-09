@@ -76,7 +76,7 @@ class QuestradeBroker(BaseBroker):
             trades = []
 
             # Start from the next day after the last recorded trade
-            start_date = db_max_date - timedelta(days=1)
+            start_date = db_max_date - timedelta(days=10)
             end_date = datetime.today()  # Yesterday's date
 
 
@@ -88,6 +88,26 @@ class QuestradeBroker(BaseBroker):
             for account_id in account_ids:
                 url = f"{self.api_server}v1/accounts/{account_id['number']}/executions"
                 response = requests.get(url, headers=headers, params=params).json()
+
+                url_activities = f"{self.api_server}v1/accounts/{account_id['number']}/activities"
+                activities_response = requests.get(url_activities, headers=headers, params=params).json()
+
+                if "activities" in activities_response:
+                    activity_elements = activities_response['activities']
+                    for element in activity_elements:
+                        if element['type'] == 'Trades':
+                            if "ASSIGNMENT OF OPTION" in element['description']:
+                                obj = {}
+                                obj['accountId'] = account_id['number']
+                                obj['timestamp'] = element['tradeDate']
+                                obj['id'] = str(element['settlementDate']) + str(element['symbolId']) + str(element['quantity'])
+                                obj['price'] = element['price']
+                                obj['side'] = "BTC"
+                                obj['quantity'] = element['quantity']
+                                obj['symbol'] = element['symbol']
+                                obj['commission'] = element['commission']
+                                obj['totalCost'] = element['price']
+                                trades.append(obj)
         
                 if "executions" in response:
                     execution_elements = response['executions']
