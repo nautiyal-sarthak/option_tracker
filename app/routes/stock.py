@@ -63,20 +63,30 @@ def stock_details_inner(account_id, symbol):
     stock_data_close = stock_data_close.drop(columns=['is_closed'])
     stock_data_close = stock_data_close.round(2)
 
+    stocks_assigned = stock_data[(stock_data['assign_date'] != 0) & (stock_data['callorPut'].isin(["Call", "Put"]))]
+    stocks_assigned = stocks_assigned[['buySell', 'assign_quantity', 'assign_date', 'assign_price_per_share']]
+    stocks_assigned['buySell'] = 'Assigned'
+
+    stocks_taken_away = stock_data[(stock_data['sold_date'] != 0) & (stock_data['callorPut'].isin(["Call", "Put"]))]
+    stocks_taken_away = stocks_taken_away[['buySell', 'sold_quantity', 'sold_date', 'sold_price_per_share']]
+    stocks_taken_away['buySell'] = 'Taken Away'
+
     stocks_purchased_sold = stock_data[~(stock_data['callorPut'].isin(["Call", "Put"]))]
     stocks_purchased_sold = stocks_purchased_sold[['buySell', 'assign_quantity', 'assign_date', 'assign_price_per_share', 
                                                    'sold_quantity', 'sold_price_per_share', 'sold_date']]
+    
+    # add stocks_assigned to stocks_purchased_sold
+    stocks_purchased_sold = pd.concat([stocks_assigned, stocks_taken_away, stocks_purchased_sold], ignore_index=True)
+
+    # set Nanl values to 0
+    stocks_purchased_sold = stocks_purchased_sold.fillna(0)
     
     stocks_purchased_sold['total_assign_cost'] = (stocks_purchased_sold['assign_quantity'] * stocks_purchased_sold['assign_price_per_share']) * -1
     stocks_purchased_sold['total_sold_cost'] = (stocks_purchased_sold['sold_quantity'] * stocks_purchased_sold['sold_price_per_share']) * -1
     stocks_purchased_sold['price_per_share'] = stocks_purchased_sold['assign_price_per_share'] + stocks_purchased_sold['sold_price_per_share']
     stocks_purchased_sold["Qty"] = stocks_purchased_sold['assign_quantity'] + stocks_purchased_sold['sold_quantity']
     
-    stocks_purchased_sold["trade_date"] = np.where(
-        stocks_purchased_sold['assign_date']==0,
-        stocks_purchased_sold['sold_date'],
-        stocks_purchased_sold['assign_date']
-        )
+    stocks_purchased_sold["trade_date"] = stocks_purchased_sold['assign_date'].where(stocks_purchased_sold['assign_date'] != 0, stocks_purchased_sold['sold_date'])
     stocks_purchased_sold["total_cost"] = stocks_purchased_sold['total_assign_cost'] + stocks_purchased_sold['total_sold_cost']
 
     stocks_purchased_sold = stocks_purchased_sold[['trade_date', 'buySell', 'Qty','price_per_share' ,'total_cost']]
