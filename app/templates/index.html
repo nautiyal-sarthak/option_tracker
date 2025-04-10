@@ -6,6 +6,7 @@
     <title>Options Tracker</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
 </head>
 <body>
     <header>
@@ -68,6 +69,34 @@
                 </div>
             </div>
         </div>
+
+        <table id="tradesTable" class="display">
+            <thead>
+                <tr>
+                    {% for col in all_trades[0].keys() %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            
+            <tfoot>
+                <tr>
+                    {% for col in all_trades[0].keys() %}
+                        <th><input type="text" placeholder="Search {{ col }}" /></th>
+                    {% endfor %}
+                </tr>
+            </tfoot>
+            
+            <tbody>
+                {% for row in all_trades %}
+                    <tr>
+                        {% for value in row.values() %}
+                            <td>{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
         <!-- ACCOUNT DETAILS SECTION -->
         <div id="accounts-container">
@@ -162,12 +191,16 @@
         data: {
             labels: labels,
             datasets: [{
-                label: 'Total Profit Over Time',
+                label: 'Total Profit Over Time (only closed trades)',
                 data: profitValues,
                 borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderWidth: 2,
-                tension: 0.3
+                tension: 0.3,
+                fill: {
+                    target: { value: 0 }, // fill till y=0
+                    above: 'rgba(75, 192, 192, 0.2)', // light greenish
+                    below: 'rgba(255, 99, 132, 0.2)'  // light red
+                }
             }]
         },
         options: {
@@ -175,9 +208,9 @@
             maintainAspectRatio: false,
             scales: {
                 x: {
-                    title: { display: true, text: 'Time' },
+                    title: { display: true, text: 'Trade open date' },
                     ticks: {
-                        maxTicksLimit: 10, // Show only 10 items at a time
+                        maxTicksLimit: 10,
                         autoSkip: false,
                         callback: function(value, index, values) {
                             const stepSize = Math.ceil(labels.length / 10);
@@ -185,24 +218,22 @@
                         }
                     }
                 },
-                y: { title: { display: true, text: 'Total Profit' }, beginAtZero: false }
+                y: { 
+                    title: { display: true, text: 'Total Profit' }, 
+                    beginAtZero: false 
+                }
             },
             plugins: {
                 legend: {
                     labels: {
-                        font: {
-                            size: 14
-                        }
+                        font: { size: 14 }
                     }
                 }
             },
-            layout: {
-                padding: 10
-            }
+            layout: { padding: 10 }
         }
     });
 
-    // Set explicit canvas size to improve resolution
     profitChart.canvas.style.width = '100%';
     profitChart.canvas.style.height = '400px';
 }
@@ -395,6 +426,24 @@ function filterStocks(selectElement) {
 }
 
     </script>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // Initialize DataTable
+        var table = $('#tradesTable').DataTable({
+            "pageLength": 10
+        });
+
+        // Apply column filters
+        $('#tradesTable tfoot input').on('keyup change clear', function () {
+            var colIndex = $(this).parent().index();
+            table.column(colIndex).search(this.value).draw();
+        });
+    });
+</script>
 
 </body>
 </html>

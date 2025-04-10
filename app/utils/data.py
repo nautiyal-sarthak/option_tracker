@@ -216,7 +216,7 @@ def process_wheel_trades(df):
                 "callorPut": None,
                 "buySell": "BUY",
                 "trade_open_date": value["tradeDate"],
-                "expiry_date": None,
+                "expiry_date": value['tradeDate'],
                 "strike_price": None,
                 "number_of_contracts_sold": None,
                 "premium_per_contract": None,
@@ -243,7 +243,7 @@ def process_wheel_trades(df):
                 "callorPut": None,
                 "buySell": "SELL",
                 "trade_open_date": value['tradeDate'],
-                "expiry_date": None,
+                "expiry_date": value['tradeDate'],
                 "strike_price": None,
                 "number_of_contracts_sold": None,
                 "premium_per_contract": None,
@@ -345,6 +345,10 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 
         # Apply time filter
         filtered_data = filter_by_time_period(processed_data, filter_type)
+        filtered_data['week_of_month'] = filtered_data['trade_open_date'].dt.day.sub(1).floordiv(7).add(1)
+        # Create the year-month-week column
+        filtered_data['year_month_week'] = filtered_data['trade_open_date'].dt.strftime('%Y-%m') + "-W" + filtered_data['week_of_month'].astype(str)
+
         
 
         # Account level aggregation
@@ -409,11 +413,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 
         # Date-based aggregation
         weekly_data = filtered_data[filtered_data['is_closed']]
-        # Calculate the week number of the month
-        weekly_data['week_of_month'] = weekly_data['trade_open_date'].dt.day.sub(1).floordiv(7).add(1)
-        # Create the year-month-week column
-        weekly_data['year_month_week'] = weekly_data['trade_open_date'].dt.strftime('%Y-%m') + "-W" + weekly_data['week_of_month'].astype(str)
-
+        
         weekly_data_grp = weekly_data.groupby(['accountId', 'symbol', 'year_month_week']).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum')
@@ -444,7 +444,8 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             'win_percentage': win_percentage,
             'account_summary': account_summary.to_dict(orient='records'),
             'account_stk_merge': dict(account_dict),
-            'profit_data': profit_by_month.to_dict(orient='records')
+            'profit_data': profit_by_month.to_dict(orient='records'),
+            'all_trades': filtered_data.to_dict(orient='records')
         }
 
         # Convert all NumPy types to Python native types
