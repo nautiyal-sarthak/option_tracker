@@ -125,7 +125,7 @@ def preprocess_trades(trades):
         "tradePrice": trade.tradePrice,
         "commission": trade.commission,
         "assetCategory": trade.assetCategory,
-    } for trade in trades])
+    } for trade in trades if trade.symbol not in ['DLR.TO','DLR.U.TO']])
 
     # Convert appropriate columns to numeric (handling None values)
     df["strike"] = pd.to_numeric(df["strike"], errors="coerce")
