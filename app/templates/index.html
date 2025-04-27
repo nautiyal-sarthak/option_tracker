@@ -85,7 +85,7 @@
                             {{ account.net_profit }}
                         </span>
                         <span>| Premium(Open trades):</span>
-                        <span class="{{ 'profit' if account.total_premium_collected >= 0 else 'loss' }}">
+                        <span class="{{ 'profit' if account.total_stock_sale_cost >= 0 else 'loss' }}">
                             {{ account.total_premium_collected }} ({{account.total_premium_collected_open}})
                         </span>
                         <span>| Stock Sale:</span>
@@ -93,7 +93,7 @@
                             {{ account.realized_pnl }}
                         </span>
                         <span>| W/L:</span>
-                        <span class="{{ 'profit' if account.realized_pnl >= 0 else 'loss' }}">
+                        <span class="{{ 'profit' if account.win_percent >= 0 else 'loss' }}">
                             ({{ account.total_wins }} / {{ account.total_lost_trades }})
                         </span>
                         <span>| Open trades:</span>
@@ -145,6 +145,10 @@
             {% endfor %}
         </div>
 
+        <!-- header to show all the trades -->
+        <div class="header">
+            <h2>All Trades</h2>
+        </div>
         <table id="tradesTable" class="display">
             <thead>
                 <tr>
@@ -285,17 +289,17 @@
                                     <span>Account: ${account.accountId}</span>
                                 </div>
                                 <div class="right-section" data-account-id="${account.accountId}">
-                                    <span>Premium:</span>
-                                    <span class="${account.total_premium_collected >= 0 ? 'profit' : 'loss'}">
-                                        ${account.total_premium_collected.toLocaleString()} (${account.total_premium_collected_open.toLocaleString()})
-                                    </span>
-                                    <span>| Total Profit:</span>
+                                    <span>Total Profit:</span>
                                     <span class="${account.net_profit >= 0 ? 'profit' : 'loss'}">
                                         ${account.net_profit.toLocaleString()}
                                     </span>
+                                    <span>| Premium(Open trades):</span>
+                                    <span class="${account.total_premium_collected >= 0 ? 'profit' : 'loss'}">
+                                        ${account.total_premium_collected.toLocaleString()} (${account.total_premium_collected_open.toLocaleString()})
+                                    </span>
                                     <span>| Stock Sale:</span>
-                                    <span class="${account.total_stock_sale_cost >= 0 ? 'profit' : 'loss'}">
-                                        ${account.total_stock_sale_cost.toLocaleString()}
+                                    <span class="${account.realized_pnl >= 0 ? 'profit' : 'loss'}">
+                                        ${account.realized_pnl.toLocaleString()}
                                     </span>
                                     <span>| W/L:</span>
                                     <span class="${account.win_percent >= 0 ? 'profit' : 'loss'}">
@@ -308,15 +312,34 @@
                             <div class="account-details" style="display: block;">
                                 <ul>
                                     <div class="stock-container" data-account-id="${account.accountId}">
+                                        <div class="sort-row">
+                                <div class="filter-container">
+                                    <label for="sort-options">Sort by:</label>
+                                    <select id="sort-options" onchange="sortStocks(this)">
+                                        <option value="premium">Premium</option>
+                                        <option value="invest">Invest %</option>
+                                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        <option value="win_percentage">Win %</option>
+                                    </select>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="filter-options">Filter by:</label>
+                                    <select id="filter-options" onchange="filterStocks(this)">
+                                        <option value="all">All</option>
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                            </div>   
                                         ${data.account_stk_merge[account.accountId].map(stock => `
                                             <div class="stock-card">
                                                 <a href="/account/${account.accountId}/symbol/${stock.symbol}" class="stock-symbol">
                                                     <strong>${stock.symbol}</strong>
                                                 </a>
                                                 <div class="stock-details">
-                                                    <span>Premium collected: <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
+                                                    <span>Premium : <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
                                                     <span>total profit: <span class="${stock.net_profit >= 0 ? 'profit' : 'loss'}">${stock.net_profit.toLocaleString()}</span></span>
-                                                    <span>stock sale P/L: <span class="${stock.total_stock_sale_cost >= 0 ? 'profit' : 'loss'}">${stock.total_stock_sale_cost.toLocaleString()}</span></span>
+                                                    <span>stock sale P/L: <span class="${stock.realized_pnl >= 0 ? 'profit' : 'loss'}">${stock.realized_pnl.toLocaleString()}</span></span>
                                                     <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_lost_trades}</span> (${stock.win_percent !== null ? stock.win_percent.toFixed(2) : 'N/A'}%)</span>
                                                     <span>Stocks Qty: ${stock.total_assign_quantity}</span>
                                                     <span>Open trades: ${stock.total_open_trades}</span>
@@ -329,6 +352,7 @@
                         `;
                         accountsContainer.appendChild(accountDiv);
             });
+
         })
         .catch(error => {
             console.error('Error fetching data:', error);
