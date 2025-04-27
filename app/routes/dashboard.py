@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from flask_login import login_required, current_user
 from ..utils.data import process_trade_data
 from flask import session
+import json
 
 bp = Blueprint('dashboard', __name__)
 
@@ -28,6 +29,12 @@ def get_data():
         filter_type = request.args.get('filter', 'all')
         session['filter_type'] = filter_type
         data = process_trade_data(current_user.email, filter_type=filter_type)
+        try:
+            parsed_data = json.dumps(data)
+            print("Valid JSON")
+        except Exception as e:
+            print("Invalid JSON")
+
         return data
     except Exception as e:
         error_message = str(e)

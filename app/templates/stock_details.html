@@ -36,35 +36,34 @@
             </div>
             <div class="card">
                 <h4>Total Profit</h4>
-                <p class="{{ 'profit' if stk_smry.total_profit >= 0 else 'loss' }}">
-                    {{ stk_smry.total_profit }}
+                <p class="{{ 'profit' if stk_smry.net_profit >= 0 else 'loss' }}">
+                    {{ stk_smry.net_profit }}
                 </p>
             </div>
             <div class="card">
                 <h4>P/L of Sales</h4>
-                <p class="{{ 'profit' if stk_smry.stock_sale_pl >= 0 else 'loss' }}">
-                    {{ stk_smry.stock_sale_pl }}
+                <p class="{{ 'profit' if stk_smry.realized_pnl >= 0 else 'loss' }}">
+                    {{ stk_smry.realized_pnl }}
                 </p>
             </div>
             <div class="card">
                 <h4>Total Stocks Assigned</h4>
-                <p>{{ stk_smry.net_quantity }}</p>
+                <p>{{ stk_smry.total_assign_quantity }}</p>
             </div>
             <div class="card">
                 <h4>Win/Loss</h4>
                 <p>Total Wins: {{ stk_smry.total_wins }}</p>
-                <p>Total Losses: {{ stk_smry.total_loss }}</p>
-                <p class="{{ 'profit' if stk_smry.w_L >= 50 else 'loss' }}">
-                    Win Percentage: {{ stk_smry.w_L }}%
+                <p>Total Losses: {{ stk_smry.total_lost_trades }}</p>
+                <p class="{{ 'profit' if stk_smry.win_percent >= 50 else 'loss' }}">
+                    Win Percentage: {{ stk_smry.win_percent }}%
                 </p>
             </div>
             <div class="card">
                 <h4>Avg Cost Basis</h4>
-                <p>{{ stk_smry.acb}}</p>
+                <p>{{ stk_smry.cost_basis_per_share}}</p>
             </div>
         </div>
 
-        <!-- open Trades Table -->
         <div class="table-container">
             <h3>All open Trades</h3>
             <table id="open-data-table" class="display" style="width:100%">

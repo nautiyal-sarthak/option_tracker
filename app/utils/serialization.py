@@ -1,4 +1,7 @@
 import numpy as np
+import datetime
+import math
+
 
 def convert_to_serializable(obj):
     if isinstance(obj, np.integer):
@@ -11,4 +14,6 @@ def convert_to_serializable(obj):
         return {k: convert_to_serializable(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [convert_to_serializable(item) for item in obj]
+    elif isinstance(obj, float) and math.isnan(obj):
+        return None  # Replace NaN with null
     return obj

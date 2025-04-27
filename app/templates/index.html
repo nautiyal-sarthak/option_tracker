@@ -32,15 +32,15 @@
         <!-- STATS SECTION -->
         <div class="stats-container" id="stats-container">
             <div class="section">
-                <h2>Total Premium (open trades)</h2>
-                <p class="{{ 'profit' if total_premium_collected >= 0 else 'loss' }}" id="total-premium">
-                    {{ total_premium_formated }}
-                </p>
-            </div>
-            <div class="section">
                 <h2>Total Profit</h2>
                 <p class="{{ 'profit' if total_profit >= 0 else 'loss' }}" id="total-profit">
                     {{ total_profit }}
+                </p>
+            </div>
+            <div class="section">
+                <h2>Premium-Closed Trades(Open Trades)</h2>
+                <p class="{{ 'profit' if total_premium_collected >= 0 else 'loss' }}" id="total-premium">
+                    {{ total_premium_formated }}
                 </p>
             </div>
             <div class="section">
@@ -70,33 +70,6 @@
             </div>
         </div>
 
-        <table id="tradesTable" class="display">
-            <thead>
-                <tr>
-                    {% for col in all_trades[0].keys() %}
-                        <th>{{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            
-            <tfoot>
-                <tr>
-                    {% for col in all_trades[0].keys() %}
-                        <th><input type="text" placeholder="Search {{ col }}" /></th>
-                    {% endfor %}
-                </tr>
-            </tfoot>
-            
-            <tbody>
-                {% for row in all_trades %}
-                    <tr>
-                        {% for value in row.values() %}
-                            <td>{{ value }}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
 
         <!-- ACCOUNT DETAILS SECTION -->
         <div id="accounts-container">
@@ -107,21 +80,21 @@
                         <span>Account: {{ account.accountId }}</span>
                     </div>
                     <div class="right-section" data-account-id="{{ account.accountId }}">
-                        <span>Premium(Open trades):</span>
-                        <span class="{{ 'profit' if account.total_premium_collected >= 0 else 'loss' }}">
+                        <span>Total Profit:</span>
+                        <span class="{{ 'profit' if account.net_profit >= 0 else 'loss' }}">
+                            {{ account.net_profit }}
+                        </span>
+                        <span>| Premium(Open trades):</span>
+                        <span class="{{ 'profit' if account.total_stock_sale_cost >= 0 else 'loss' }}">
                             {{ account.total_premium_collected }} ({{account.total_premium_collected_open}})
                         </span>
-                        <span>| Total Profit:</span>
-                        <span class="{{ 'profit' if account.total_profit >= 0 else 'loss' }}">
-                            {{ account.total_profit }}
-                        </span>
                         <span>| Stock Sale:</span>
-                        <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
-                            {{ account.stock_sale_pl }}
+                        <span class="{{ 'profit' if account.realized_pnl >= 0 else 'loss' }}">
+                            {{ account.realized_pnl }}
                         </span>
                         <span>| W/L:</span>
-                        <span class="{{ 'profit' if account.stock_sale_pl >= 0 else 'loss' }}">
-                            ({{ account.total_wins }} / {{ account.total_loss }})
+                        <span class="{{ 'profit' if account.win_percent >= 0 else 'loss' }}">
+                            ({{ account.total_wins }} / {{ account.total_lost_trades }})
                         </span>
                         <span>| Open trades:</span>
                         <span>{{ account.total_open_trades }}</span>
@@ -157,12 +130,11 @@
                                 </a>
                                 <div class="stock-details">
                                     <span>Premium : <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }} ({{stock.total_premium_collected_open}})</span></span>
-                                    <span>total profit: <span class="{{ 'profit' if stock.total_profit >= 0 else 'loss' }}">{{stock.total_profit}}</span></span>
-                                    <span>stock sale P/L: <span class="{{ 'profit' if stock.stock_sale_pl >= 0 else 'loss' }}">{{stock.stock_sale_pl}}</span></span>
-                                    <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_loss }}</span> ({{ stock.w_L }}%)</span>
-                                    <span>Stocks Qty: {{ stock.total_stock_quantity }}</span>
+                                    <span>total profit: <span class="{{ 'profit' if stock.net_profit >= 0 else 'loss' }}">{{stock.net_profit}}</span></span>
+                                    <span>stock sale P/L: <span class="{{ 'profit' if stock.realized_pnl >= 0 else 'loss' }}">{{stock.realized_pnl}}</span></span>
+                                    <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_lost_trades }}</span> ({{ stock.win_percent }}%)</span>
+                                    <span>Stocks Qty: {{ stock.total_assign_quantity }}</span>
                                     <span>Open trades: {{ stock.total_open_trades }}</span>
-                                    <span>invest %: {{ stock.net_money_invested_percent }}</span>
                                 </div>
                             </div>
                             {% endfor %}
@@ -172,105 +144,141 @@
             </div>
             {% endfor %}
         </div>
+
+        <!-- header to show all the trades -->
+        <div class="header">
+            <h2>All Trades</h2>
+        </div>
+        <table id="tradesTable" class="display">
+            <thead>
+                <tr>
+                    {% for col in all_trades[0].keys() %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            
+            <tfoot>
+                <tr>
+                    {% for col in all_trades[0].keys() %}
+                        <th><input type="text" placeholder="Search {{ col }}" /></th>
+                    {% endfor %}
+                </tr>
+            </tfoot>
+            
+            <tbody>
+                {% for row in all_trades %}
+                    <tr>
+                        {% for value in row.values() %}
+                            <td>{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <script>
         let profitChart;
-
+    
         function updateChart(profitData) {
-    const labels = profitData.map(entry => entry.year_month_week);
-    const profitValues = profitData.map(entry => entry.total_profit);
-
-    if (profitChart) {
-        profitChart.destroy();
-    }
-
-    const ctx = document.getElementById('profitChart').getContext('2d');
-    profitChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Total Profit Over Time (only closed trades)',
-                data: profitValues,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                tension: 0.3,
-                fill: {
-                    target: { value: 0 }, // fill till y=0
-                    above: 'rgba(75, 192, 192, 0.2)', // light greenish
-                    below: 'rgba(255, 99, 132, 0.2)'  // light red
-                }
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    title: { display: true, text: 'Trade open date' },
-                    ticks: {
-                        maxTicksLimit: 10,
-                        autoSkip: false,
-                        callback: function(value, index, values) {
-                            const stepSize = Math.ceil(labels.length / 10);
-                            return index % stepSize === 0 ? labels[index] : "";
+            const labels = profitData.map(entry => entry.month_week);
+            const profitValues = profitData.map(entry => entry.net_profit);
+    
+            if (profitChart) {
+                profitChart.destroy();
+            }
+    
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            profitChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Profit Over Time (only closed trades)',
+                        data: profitValues,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: {
+                            target: { value: 0 },
+                            above: 'rgba(75, 192, 192, 0.2)',
+                            below: 'rgba(255, 99, 132, 0.2)'
                         }
-                    }
+                    }]
                 },
-                y: { 
-                    title: { display: true, text: 'Total Profit' }, 
-                    beginAtZero: false 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Trade open date' },
+                            ticks: {
+                                maxTicksLimit: 10,
+                                autoSkip: false,
+                                callback: function(value, index) {
+                                    const stepSize = Math.ceil(labels.length / 10);
+                                    return index % stepSize === 0 ? labels[index] : "";
+                                }
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: 'Total Profit' },
+                            beginAtZero: false
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { font: { size: 14 } } }
+                    },
+                    layout: { padding: 10 }
                 }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        font: { size: 14 }
-                    }
-                }
-            },
-            layout: { padding: 10 }
+            });
+    
+            profitChart.canvas.style.width = '100%';
+            profitChart.canvas.style.height = '400px';
         }
-    });
-
-    profitChart.canvas.style.width = '100%';
-    profitChart.canvas.style.height = '400px';
-}
-
-        function getData(filter) {
+    
+        function selectFilter(button, filter) {
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.remove('selected');
             });
-            const clickedButton = document.querySelector(`button[onclick="selectFilter(this, '${filter}')"]`);
-            if (clickedButton) clickedButton.classList.add('selected');
+            button.classList.add('selected');
+            getData(filter);
+        }
+    
+        function getData(filter) {
+    fetch(`/get_data?filter=${filter}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response Data:', data); // Debugging: Log the response data
 
-            fetch(`/get_data?filter=${filter}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        console.error(data.error);
-                        return;
-                    }
-                    
-                    
-                    // Update Stats Section
-                    document.getElementById('total-premium').innerHTML = data.total_premium_formated.toLocaleString();
-                    document.getElementById('total-premium').className = data.total_premium_collected >= 0 ? 'profit' : 'loss';
-                    document.getElementById('total-profit').innerHTML = data.total_profit.toLocaleString();
-                    document.getElementById('total-profit').className = data.total_profit >= 0 ? 'profit' : 'loss';
-                    document.getElementById('pl-stock').innerHTML = data.p_l_stock.toLocaleString();
-                    document.getElementById('pl-stock').className = data.p_l_stock >= 0 ? 'profit' : 'loss';
-                    document.getElementById('total-wins').innerHTML = `Total Wins: ${data.total_wins}`;
-                    document.getElementById('total-loss').innerHTML = `Total Losses: ${data.total_loss}`;
-                    document.getElementById('win-percentage').innerHTML = `Win %: ${data.win_percentage}`;
-                    document.getElementById('total-open-trades').innerHTML = data.total_open_trades;
+            // Handle errors in the response
+            if (data.error) {
+                console.error('Backend Error:', data.error);
+                return;
+            }
 
-                    // Update Chart
-                    updateChart(data.profit_data);
+            document.getElementById('total-premium').innerHTML = data.total_premium_formated.toLocaleString();
+            document.getElementById('total-premium').className = data.total_premium_collected >= 0 ? 'profit' : 'loss';
+            document.getElementById('total-profit').innerHTML = data.total_profit.toLocaleString();
+            document.getElementById('total-profit').className = data.total_profit >= 0 ? 'profit' : 'loss';
+            document.getElementById('pl-stock').innerHTML = data.p_l_stock.toLocaleString();
+            document.getElementById('pl-stock').className = data.p_l_stock >= 0 ? 'profit' : 'loss';
+            document.getElementById('total-wins').innerHTML = `Total Wins: ${data.total_wins}`;
+            document.getElementById('total-loss').innerHTML = `Total Losses: ${data.total_loss}`;
+            document.getElementById('win-percentage').innerHTML = `Win %: ${data.win_percentage}`;
+            document.getElementById('total-open-trades').innerHTML = data.total_open_trades;
 
-                    // Update Account Details
-                    const accountsContainer = document.getElementById('accounts-container');
+            // Update Chart
+            updateChart(data.profit_data);
+
+            // Update Account Details
+            const accountsContainer = document.getElementById('accounts-container');
                     accountsContainer.innerHTML = '';
                     data.account_summary.forEach(account => {
                         const accountDiv = document.createElement('div');
@@ -281,21 +289,21 @@
                                     <span>Account: ${account.accountId}</span>
                                 </div>
                                 <div class="right-section" data-account-id="${account.accountId}">
-                                    <span>Premium:</span>
+                                    <span>Total Profit:</span>
+                                    <span class="${account.net_profit >= 0 ? 'profit' : 'loss'}">
+                                        ${account.net_profit.toLocaleString()}
+                                    </span>
+                                    <span>| Premium(Open trades):</span>
                                     <span class="${account.total_premium_collected >= 0 ? 'profit' : 'loss'}">
                                         ${account.total_premium_collected.toLocaleString()} (${account.total_premium_collected_open.toLocaleString()})
                                     </span>
-                                    <span>| Total Profit:</span>
-                                    <span class="${account.total_profit >= 0 ? 'profit' : 'loss'}">
-                                        ${account.total_profit.toLocaleString()}
-                                    </span>
                                     <span>| Stock Sale:</span>
-                                    <span class="${account.stock_sale_pl >= 0 ? 'profit' : 'loss'}">
-                                        ${account.stock_sale_pl.toLocaleString()}
+                                    <span class="${account.realized_pnl >= 0 ? 'profit' : 'loss'}">
+                                        ${account.realized_pnl.toLocaleString()}
                                     </span>
                                     <span>| W/L:</span>
-                                    <span class="${account.stock_sale_pl >= 0 ? 'profit' : 'loss'}">
-                                        (${account.total_wins} / ${account.total_loss})
+                                    <span class="${account.win_percent >= 0 ? 'profit' : 'loss'}">
+                                        (${account.total_wins} / ${account.total_lost_trades})
                                     </span>
                                     <span>| Open trades:</span>
                                     <span>${account.total_open_trades}</span>
@@ -304,19 +312,37 @@
                             <div class="account-details" style="display: block;">
                                 <ul>
                                     <div class="stock-container" data-account-id="${account.accountId}">
+                                        <div class="sort-row">
+                                <div class="filter-container">
+                                    <label for="sort-options">Sort by:</label>
+                                    <select id="sort-options" onchange="sortStocks(this)">
+                                        <option value="premium">Premium</option>
+                                        <option value="invest">Invest %</option>
+                                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        <option value="win_percentage">Win %</option>
+                                    </select>
+                                </div>
+                                <div class="filter-container">
+                                    <label for="filter-options">Filter by:</label>
+                                    <select id="filter-options" onchange="filterStocks(this)">
+                                        <option value="all">All</option>
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+                                </div>
+                            </div>   
                                         ${data.account_stk_merge[account.accountId].map(stock => `
                                             <div class="stock-card">
                                                 <a href="/account/${account.accountId}/symbol/${stock.symbol}" class="stock-symbol">
                                                     <strong>${stock.symbol}</strong>
                                                 </a>
                                                 <div class="stock-details">
-                                                    <span>Premium collected: <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
-                                                    <span>total profit: <span class="${stock.total_profit >= 0 ? 'profit' : 'loss'}">${stock.total_profit.toLocaleString()}</span></span>
-                                                    <span>stock sale P/L: <span class="${stock.stock_sale_pl >= 0 ? 'profit' : 'loss'}">${stock.stock_sale_pl.toLocaleString()}</span></span>
-                                                    <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_loss}</span> (${stock.w_L !== null ? stock.w_L.toFixed(2) : 'N/A'}%)</span>
-                                                    <span>Stocks Qty: ${stock.total_stock_quantity}</span>
+                                                    <span>Premium : <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
+                                                    <span>total profit: <span class="${stock.net_profit >= 0 ? 'profit' : 'loss'}">${stock.net_profit.toLocaleString()}</span></span>
+                                                    <span>stock sale P/L: <span class="${stock.realized_pnl >= 0 ? 'profit' : 'loss'}">${stock.realized_pnl.toLocaleString()}</span></span>
+                                                    <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_lost_trades}</span> (${stock.win_percent !== null ? stock.win_percent.toFixed(2) : 'N/A'}%)</span>
+                                                    <span>Stocks Qty: ${stock.total_assign_quantity}</span>
                                                     <span>Open trades: ${stock.total_open_trades}</span>
-                                                    <span>invest %: ${stock.net_money_invested_percent}</span>
                                                 </div>
                                             </div>
                                         `).join('')}
@@ -325,29 +351,25 @@
                             </div>
                         `;
                         accountsContainer.appendChild(accountDiv);
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function selectFilter(button, filter) {
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('selected');
             });
-            button.classList.add('selected');
-            getData(filter);
-        }
 
-        document.addEventListener("DOMContentLoaded", function() {
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+        });
+}
+    
+        document.addEventListener("DOMContentLoaded", function () {
             const profitData = JSON.parse('{{ profit_data | tojson | safe }}');
             updateChart(profitData);
         });
-
+    
         function toggleAccountDetails(element) {
-            var details = element.nextElementSibling;
+            const details = element.nextElementSibling;
             details.style.display = details.style.display === "block" ? "none" : "block";
         }
     </script>
+    
     <script>
         function sortStocks(selectElement) {
     const sortBy = selectElement.value;
