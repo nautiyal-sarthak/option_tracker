@@ -1,7 +1,6 @@
 import psycopg2
 from psycopg2.extras import DictCursor
 from app.models.trade import Trade
-from flask import current_app
 import os
 import pandas as pd
 
@@ -11,11 +10,11 @@ DB_URL = os.getenv("SUPABASE_DB_URL")
 def get_db_connection():
     """Establishes and returns a connection to the Supabase PostgreSQL database."""
     try:
-        current_app.logger.info('Fetching DB connection')
+        print('Fetching DB connection')
         conn = psycopg2.connect(DB_URL, cursor_factory=DictCursor)
         return conn
     except Exception as e:
-        current_app.logger.error(f"Error connecting to database: {e}")
+        print(f"Error connecting to database: {e}")
         raise e
 
 def check_and_create_table():
@@ -71,7 +70,7 @@ def check_and_create_table():
         
         conn.commit()
     except Exception as e:
-        current_app.logger.error(f"Database error: {e}")
+        print(f"Database error: {e}")
         raise e
     finally:
         conn.close()
@@ -86,7 +85,7 @@ def get_max_trade_date(email):
         max_date = cursor.fetchone()[0]
         return max_date
     except Exception as e:
-        current_app.logger.error(f"Error fetching max trade date: {e}")
+        print(f"Error fetching max trade date: {e}")
         raise e
     finally:
         conn.close()
@@ -102,7 +101,7 @@ def get_all_trades(email):
         trades = [Trade(*row) for row in rows]
         return trades
     except Exception as e:
-        current_app.logger.error(f"Error fetching all trades: {e}")
+        print(f"Error fetching all trades: {e}")
         raise e
     finally:
         conn.close()
@@ -148,7 +147,7 @@ def preprocess_trades(trades):
 
 def insert_trades(trades, email):
     try:
-        current_app.logger.info('Inserting trades into Supabase')
+        print('Inserting trades into Supabase')
         grouped_trades = preprocess_trades(trades)
 
         insert_query = """
@@ -198,9 +197,9 @@ def insert_trades(trades, email):
         cursor.close()
         supabase_conn.close()
 
-        current_app.logger.info(f'Inserted {len(trades)} trades successfully!')
+        print(f'Inserted {len(trades)} trades successfully!')
     except Exception as e:
-        current_app.logger.error(f"Error inserting trades: {e}")
+        print(f"Error inserting trades: {e}")
         raise e
 
 
@@ -215,7 +214,7 @@ def getUserToken(user_id):
         result = cursor.fetchone()
         return result if result else (None, None)
     except Exception as e:
-        current_app.logger.error(f"Error fetching user token: {e}")
+        print(f"Error fetching user token: {e}")
         raise e
     finally:
         conn.close()
@@ -229,7 +228,7 @@ def update_refresh_token(user_id, new_token):
         cursor.execute("UPDATE user_audit SET auth_token = %s WHERE user_id = %s;", (new_token, user_id))
         conn.commit()
     except Exception as e:
-        current_app.logger.error(f"Error updating refresh token: {e}")
+        print(f"Error updating refresh token: {e}")
         raise e
     finally:
         conn.close()
