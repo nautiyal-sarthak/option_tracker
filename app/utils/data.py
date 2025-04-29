@@ -355,7 +355,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             'p_l_stock': total_summary['realized_pnl'].values[0],
             'total_wins': total_summary['total_wins'].values[0],
             'total_loss': total_summary['total_lost_trades'].values[0],
-            'win_percentage': (total_summary['total_wins'].values[0]/(total_summary['total_wins'].values[0] + total_summary['total_lost_trades'].values[0])) * 100,
+            'win_percentage': round((total_summary['total_wins'].values[0]/(total_summary['total_wins'].values[0] + total_summary['total_lost_trades'].values[0])) * 100,2),
             'account_summary': account_summary.to_dict(orient='records'),
             'account_stk_merge': dict(account_dict),
             'profit_data': profit_by_month.to_dict(orient='records'),
