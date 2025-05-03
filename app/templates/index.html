@@ -54,6 +54,7 @@
                 <p class="profit" id="total-wins">Total Wins: {{ total_wins }}</p>
                 <p class="loss" id="total-loss">Total Losses: {{ total_loss }}</p>
                 <p id="win-percentage">Win %: {{ win_percentage }}</p>
+                <p id="avg_ROI">Avg ROI: {{ avg_ROI }} %</p>
             </div>
             <div class="section">
                 <h2>Total Open Trades</h2>
@@ -96,6 +97,10 @@
                         <span class="{{ 'profit' if account.win_percent >= 0 else 'loss' }}">
                             ({{ account.total_wins }} / {{ account.total_lost_trades }})
                         </span>
+                        <span>| ROI:</span>
+                        <span class="{{ 'profit' if account.avg_ROI >= 0 else 'loss' }}">
+                            {{ account.avg_ROI }}
+                        </span>
                         <span>| Open trades:</span>
                         <span>{{ account.total_open_trades }}</span>
                     </div>
@@ -135,6 +140,7 @@
                                     <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_lost_trades }}</span> ({{ stock.win_percent }}%)</span>
                                     <span>Stocks Qty: {{ stock.total_assign_quantity }}</span>
                                     <span>Open trades: {{ stock.total_open_trades }}</span>
+                                    <span>ROI: {{ stock.avg_ROI }} %</span>
                                 </div>
                             </div>
                             {% endfor %}
@@ -456,7 +462,8 @@ function filterStocks(selectElement) {
     $(document).ready(function () {
         // Initialize DataTable
         var table = $('#tradesTable').DataTable({
-            "pageLength": 10
+            "pageLength": 10,
+            "order": [[5, "desc"]]
         });
 
         // Apply column filters

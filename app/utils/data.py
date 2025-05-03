@@ -142,6 +142,7 @@ def process_wheel_trades(df):
                     
 
                     "close_date":None,
+                    "ROI": None,
                     "status": "OPEN"
                 }
 
@@ -193,6 +194,7 @@ def process_wheel_trades(df):
                 trade["buyback_date"] = buybacks[trade_key]['buyback_date']
                 trade["close_date"] = buybacks[trade_key]['buyback_date']
                 trade["status"] = "BOUGHT BACK"
+                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * 100)) * 100
             
             if assigned_stocks_key:
                 trade["assign_price_per_share"] = assigned_stocks[assigned_stocks_key]['assign_price']
@@ -202,6 +204,7 @@ def process_wheel_trades(df):
                 trade["net_assign_cost"] = assigned_stocks[assigned_stocks_key]['net_assign_cost']
                 trade["close_date"] = assigned_stocks[assigned_stocks_key]['tradeDate']
                 trade["status"] = "ASSIGNED"
+                trade["ROI"] = 0
                 
                 assigned_stocks.pop(assigned_stocks_key)
             
@@ -213,6 +216,7 @@ def process_wheel_trades(df):
                 trade["net_sold_cost"] = stock_sales[stock_sales_key]['net_sold_cost']
                 trade["close_date"] = stock_sales[stock_sales_key]['tradeDate']
                 trade["status"] = "TAKEN AWAY"
+                trade["ROI"] = 0
                 
                 stock_sales.pop(stock_sales_key)
 
@@ -222,6 +226,8 @@ def process_wheel_trades(df):
             if trade["expiry_date"] < today and trade["status"] == "OPEN":
                 trade["status"] = "EXPIRED"
                 trade["close_date"] = trade["expiry_date"]
+                trade["ROI"] = ((trade["net_premium"] / (trade["strike_price"]) * 100)) * 100
+
 
         for key, value in assigned_stocks.items():
             processed_trades[key] ={
@@ -290,12 +296,13 @@ def process_wheel_trades(df):
         df['net_assign_cost'] = pd.to_numeric(df['net_assign_cost'], errors='coerce').fillna(0.0).astype(float)
         df['net_premium'] = pd.to_numeric(df['net_premium'], errors='coerce').fillna(0.0).astype(float)
         df['net_premium'] = df['net_premium'].apply(lambda x: round(x, 2))
+        df['ROI'] = df['ROI'].apply(lambda x: round(x, 2))
 
 
         return df[['accountId','symbol', 'callorPut', 'buySell', 'trade_open_date', 'expiry_date','strike_price', 
                    'number_of_contracts_sold', 'premium_collected','net_buyback_price', 'number_of_buyback', 'buyback_date', 'net_premium',
                    'assign_price_per_share', 'assign_quantity','number_of_assign_contract', 'assign_date', 'net_assign_cost','sold_price_per_share', 
-                   'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date', 'status']]
+                   'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date','ROI','status']]
     except Exception as e:
         logging.error(f"Error processing wheel trades: {e}")
         raise
@@ -355,11 +362,12 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
             'p_l_stock': total_summary['realized_pnl'].values[0],
             'total_wins': total_summary['total_wins'].values[0],
             'total_loss': total_summary['total_lost_trades'].values[0],
+            'avg_ROI': total_summary['avg_ROI'].values[0],
             'win_percentage': round((total_summary['total_wins'].values[0]/(total_summary['total_wins'].values[0] + total_summary['total_lost_trades'].values[0])) * 100,2),
             'account_summary': account_summary.to_dict(orient='records'),
             'account_stk_merge': dict(account_dict),
             'profit_data': profit_by_month.to_dict(orient='records'),
-            'all_trades': raw_df.to_dict(orient='records')
+            'all_trades': format_processed_data(filtered_data).to_dict(orient='records')
         }
 
         # # Convert all NumPy types to Python native types
@@ -369,10 +377,33 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
     except Exception as e:
         raise Exception(f"An error occurred: {e}")
 
+def format_processed_data(df):
+    df['key'] = df['symbol'] + '_' + df['callorPut'].astype(str) + '_' + df['strike_price'].astype(str) + '_' + df['expiry_date'].astype(str) + '_' + df['buySell'].astype(str)
+    df = df[['key','number_of_contracts_sold', 'net_premium','ROI','status','trade_open_date','month_week']]
+
+    # # if status is open set the trade_open_date to ''
+    df.loc[df['status'] == 'OPEN', 'month_week'] = ''
+
+    df.sort_values(by=['month_week'], ascending=False, inplace=True)
+
+    #rename columns
+    df.rename(columns={
+        'number_of_contracts_sold': '# Contracts',
+        'net_premium': 'Net Profit',
+        'status': 'Status',
+        'trade_open_date': 'Trade Open Date',
+        'month_week':'Close week'
+    }, inplace=True)
+
+    return df
+
+
 def getTotalSummary(df):
     try:
         # Group by accountId and sum all other numeric columns
         agg_df = df.sum(numeric_only=True).to_frame().T
+        agg_df['avg_ROI'] = df['avg_ROI'].mean()  # Add the mean of the ROI column
+
         # Round all numeric columns to 2 decimal places
         agg_df = agg_df.round(2)
         return agg_df
@@ -418,8 +449,11 @@ def getProfitPerTimePeriod(df):
 
 def getAccountSummary(df):
     try:
-        # Group by accountId and sum all other numeric columns
-        agg_df = df.groupby('accountId', as_index=False).sum(numeric_only=True)
+        agg_df = df.groupby('accountId', as_index=False).agg({
+                    'avg_ROI': 'mean',  # Calculate the mean for the ROI column
+                    **{col: 'sum' for col in df.select_dtypes(include='number').columns if col != 'ROI'}  # Sum for other numeric columns
+                })
+
         # Round all numeric columns to 2 decimal places
         agg_df = agg_df.round(2)
         return agg_df
@@ -442,7 +476,8 @@ def getStockSummary(df):
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
             total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
             total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
-            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum')
+            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
+            avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean())
         ).reset_index()
 
         stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']
