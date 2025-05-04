@@ -56,7 +56,8 @@ def callback():
     user_dict[user_id] = user
     current_app.logger.info('User %s logged in', user_info['email'])
     current_app.logger.info('Redirecting to dashboard')
-    return redirect(url_for('dashboard.dashboard'))
+    return "THIS is a test page. <a href='/dashboard'>Go to dashboard</a>"
+    #return redirect(url_for('dashboard.dashboard'))
 
 @bp.route('/logout')
 @login_required
