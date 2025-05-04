@@ -194,7 +194,7 @@ def process_wheel_trades(df):
                 trade["buyback_date"] = buybacks[trade_key]['buyback_date']
                 trade["close_date"] = buybacks[trade_key]['buyback_date']
                 trade["status"] = "BOUGHT BACK"
-                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * 100)) * 100
+                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
             
             if assigned_stocks_key:
                 trade["assign_price_per_share"] = assigned_stocks[assigned_stocks_key]['assign_price']
@@ -226,7 +226,7 @@ def process_wheel_trades(df):
             if trade["expiry_date"] < today and trade["status"] == "OPEN":
                 trade["status"] = "EXPIRED"
                 trade["close_date"] = trade["expiry_date"]
-                trade["ROI"] = ((trade["net_premium"] / (trade["strike_price"]) * 100)) * 100
+                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
 
 
         for key, value in assigned_stocks.items():
@@ -344,7 +344,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 
         stock_summary = getStockSummary(filtered_data)
         account_summary = getAccountSummary(stock_summary)
-        total_summary = getTotalSummary(stock_summary)
+        total_summary = getTotalSummary(account_summary)
         profit_by_month = getProfitPerTimePeriod(filtered_data)
 
 
@@ -379,7 +379,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
 
 def format_processed_data(df):
     df['key'] = df['symbol'] + '_' + df['callorPut'].astype(str) + '_' + df['strike_price'].astype(str) + '_' + df['expiry_date'].astype(str) + '_' + df['buySell'].astype(str)
-    df = df[['key','number_of_contracts_sold', 'net_premium','ROI','status','trade_open_date','month_week']]
+    df = df[['key','number_of_contracts_sold','ROI','status','trade_open_date','month_week','net_premium']]
 
     # # if status is open set the trade_open_date to ''
     df.loc[df['status'] == 'OPEN', 'month_week'] = ''
@@ -401,7 +401,8 @@ def format_processed_data(df):
 def getTotalSummary(df):
     try:
         # Group by accountId and sum all other numeric columns
-        agg_df = df.sum(numeric_only=True).to_frame().T
+        agg_df = df.copy()
+        agg_df = agg_df.sum(numeric_only=True).to_frame().T
         agg_df['avg_ROI'] = df['avg_ROI'].mean()  # Add the mean of the ROI column
 
         # Round all numeric columns to 2 decimal places

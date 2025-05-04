@@ -3,6 +3,7 @@ from flask_login import login_required
 from ..utils.data import *
 import pandas as pd
 import numpy as np
+from ..utils.data import format_processed_data
 
 bp = Blueprint('stock', __name__)
 
@@ -23,15 +24,20 @@ def stock_details_inner(account_id, symbol):
     ].reset_index()
     stock_data = filter_by_time_period(stock_data, filter_type)
 
-    
-
     # Get summary data
     processed_data_global_stk_grp = getStockSummary(stock_data)
+    stock_data_formated = format_processed_data(stock_data)
     
-    stock_data_open = stock_data[(stock_data["status"] == 'OPEN')]
-    stock_data_close = stock_data[(stock_data["status"] != 'OPEN')]
+    stock_data_open = stock_data_formated[(stock_data_formated["Status"] == 'OPEN')]
+    stock_data_close = stock_data_formated[(stock_data_formated["Status"] != 'OPEN')]
+
+    stock_data_open.drop(columns=['ROI', 'Status','Close week'], inplace=True)
+    stock_data_open.rename(columns={
+        'Net Profit': 'Unrealised Profit'
+    }, inplace=True)
 
     stocks_purchased_sold = stock_data[(stock_data["status"].isin(['ASSIGNED']))]
+    stocks_purchased_sold = stocks_purchased_sold[['assign_date','assign_quantity','assign_price_per_share','status']]
 
     stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
     return render_template('stock_details.html',

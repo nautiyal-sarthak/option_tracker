@@ -100,7 +100,7 @@
                 <tbody>
                     {% for row in closed_data %}
     
-                    <tr class="{{ 'win' if row[17] else 'loss_row'}}">
+                    <tr class="{{ 'win' if row[6] > 0 else 'loss_row'}}">
                         {% for cell in row %}
                         <td>{{ cell }}</td>
                         {% endfor %}

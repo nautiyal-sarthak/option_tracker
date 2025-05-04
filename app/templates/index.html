@@ -174,7 +174,7 @@
             
             <tbody>
                 {% for row in all_trades %}
-                    <tr>
+                    <tr class="{{ 'win' if (row['Net Profit']>0 ) else 'loss_row'}}">
                         {% for value in row.values() %}
                             <td>{{ value }}</td>
                         {% endfor %}
@@ -279,6 +279,7 @@
             document.getElementById('total-loss').innerHTML = `Total Losses: ${data.total_loss}`;
             document.getElementById('win-percentage').innerHTML = `Win %: ${data.win_percentage}`;
             document.getElementById('total-open-trades').innerHTML = data.total_open_trades;
+            document.getElementById('avg_ROI').innerHTML = `Avg ROI: ${data.avg_ROI} %`;
 
             // Update Chart
             updateChart(data.profit_data);
@@ -349,6 +350,7 @@
                                                     <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_lost_trades}</span> (${stock.win_percent !== null ? stock.win_percent.toFixed(2) : 'N/A'}%)</span>
                                                     <span>Stocks Qty: ${stock.total_assign_quantity}</span>
                                                     <span>Open trades: ${stock.total_open_trades}</span>
+                                                    <span>ROI: ${stock.avg_ROI} %</span>
                                                 </div>
                                             </div>
                                         `).join('')}
