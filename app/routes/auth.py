@@ -29,9 +29,10 @@ def home():
 
 @bp.route('/login')
 def login():
+    session.clear()
     state = secrets.token_urlsafe(16)
     session['state'] = state
-    current_app.logger.info("Initiating Google OAuth login")
+    current_app.logger.info(f"Generated state: {state}")
     return oauth.google.authorize_redirect(url_for('auth.callback', _external=True), state=state)
 
 @bp.route('/login/callback')
@@ -39,6 +40,8 @@ def callback():
     try:
         session_state = session.get('state')
         request_state = request.args.get('state')
+        current_app.logger.info(f"Session state: {session_state}, Request state: {request_state}")
+
 
         if session_state != request_state:
             current_app.logger.warning("Invalid OAuth state token")
