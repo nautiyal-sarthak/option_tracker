@@ -73,11 +73,7 @@ def callback():
 
     except Exception as e:
         current_app.logger.exception("Error during login callback")
-        session.clear()
         return 'An error occurred during login. Please try again later.', 500
-
-    finally:
-        session.pop('state', None)
 
 @bp.route('/logout')
 @login_required
