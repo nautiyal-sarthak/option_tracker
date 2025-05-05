@@ -126,7 +126,8 @@ def getStockSummary(df):
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
             total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
             total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
-            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum')
+            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
+            avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean())
         ).reset_index()
 
         stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']

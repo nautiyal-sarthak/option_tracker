@@ -251,6 +251,24 @@
             button.classList.add('selected');
             getData(filter);
         }
+
+        function updateTable(tradesData) {
+    if (!tradesData || !tradesData.length) return;
+
+    const table = $('#tradesTable').DataTable();
+
+    // Get column headers in correct order from the table
+    const columnOrder = $('#tradesTable thead th').map(function () {
+        return $(this).text().trim();
+    }).get();
+
+    // Reorder each row's values to match the column order
+    const rows = tradesData.map(row => columnOrder.map(col => row[col]));
+
+    table.clear();
+    table.rows.add(rows);
+    table.draw();
+}
     
         function getData(filter) {
     fetch(`/get_data?filter=${filter}`)
@@ -361,6 +379,7 @@
                         accountsContainer.appendChild(accountDiv);
             });
 
+            updateTable(data.all_trades);
         })
         .catch(error => {
             console.error('Error fetching data:', error);
@@ -475,6 +494,8 @@ function filterStocks(selectElement) {
         });
     });
 </script>
+
+
 
 </body>
 </html>

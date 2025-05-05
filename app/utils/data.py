@@ -340,7 +340,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
     
         # Apply time filter
         filtered_data = filter_by_time_period(processed_data, filter_type)
-        raw_df = filter_by_time_period(raw_df, filter_type,"tradeDate")
+        #raw_df = filter_by_time_period(raw_df, filter_type,"tradeDate")
 
         stock_summary = getStockSummary(filtered_data)
         account_summary = getAccountSummary(stock_summary)
@@ -533,4 +533,8 @@ def filter_by_time_period(df, filter_type, col_name='trade_open_date'):
     elif isinstance(end_date, datetime):
         end_date = end_date.date()
 
-    return df[(df[col_name] >= start_date) & (df[col_name] <= end_date)]
+    condition_1 = (df[col_name] >= start_date) & (df[col_name] <= end_date)
+    condition_2 = (df['close_date'].dt.date >= start_date) & (df['close_date'].dt.date <= end_date)
+    return df[condition_1 | condition_2]
+
+    
