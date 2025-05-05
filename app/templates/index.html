@@ -257,18 +257,29 @@
 
     const table = $('#tradesTable').DataTable();
 
-    // Get column headers in correct order from the table
+    // Get the column order from the table header
     const columnOrder = $('#tradesTable thead th').map(function () {
         return $(this).text().trim();
     }).get();
 
-    // Reorder each row's values to match the column order
-    const rows = tradesData.map(row => columnOrder.map(col => row[col]));
-
+    // Clear the table
     table.clear();
-    table.rows.add(rows);
+
+    // Add each row with dynamic class
+    tradesData.forEach(row => {
+        const rowClass = row['Net Profit'] > 0 ? 'win' : 'loss_row';
+        const $row = $('<tr>').addClass(rowClass);
+
+        columnOrder.forEach(col => {
+            $row.append($('<td>').text(row[col]));
+        });
+
+        table.row.add($row);
+    });
+
     table.draw();
 }
+
     
         function getData(filter) {
     fetch(`/get_data?filter=${filter}`)

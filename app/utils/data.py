@@ -386,6 +386,9 @@ def format_processed_data(df):
 
     df.sort_values(by=['month_week'], ascending=False, inplace=True)
 
+    # convert trade_open_date to a string
+    df['trade_open_date'] = df['trade_open_date'].astype(str)
+
     #rename columns
     df.rename(columns={
         'number_of_contracts_sold': '# Contracts',
