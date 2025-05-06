@@ -68,22 +68,44 @@ def transform_data(df):
 
     return df
 
-def find_matching_key(target_key, lookup_dict, trade_open_date):
-    if len(target_key) < 5:
+def find_matching_key(trade_open_key, trade_close_dict):
+    if len(trade_open_key) < 6:
         return None  # Invalid key format
+    
+    #(symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'], row['tradeDate'])
 
-    for dic_key in lookup_dict:
-        if len(dic_key) < 5:
+    for close_key in trade_close_dict:
+        if len(close_key) < 6:
             continue  # Skip invalid keys
-
-        if target_key[0] == dic_key[0] and target_key[1] == dic_key[1] and target_key[2] == dic_key[2] and target_key[3] >= dic_key[3] and dic_key[3] >= trade_open_date:
-            return dic_key  # Return the first matching key
+        import datetime
+        if close_key[3] == datetime.date(2099, 12, 31):
+            if (
+                trade_open_key[0] == close_key[0] # Check symbol
+                and trade_open_key[1] == close_key[1] # Check putCall
+                and trade_open_key[2] == close_key[2] # Check strike price
+                and trade_open_key[3] >= close_key[5] # Check expiry date
+                and close_key[5] >= trade_open_key[5] # validate that the close date is greater than the open date
+                ):
+                return close_key
+        else:
+            if (
+                trade_open_key[0] == close_key[0] # Check symbol
+                and trade_open_key[1] == close_key[1] # Check putCall
+                and trade_open_key[2] == close_key[2] # Check strike price
+                and trade_open_key[3] == close_key[3] # Check expiry date
+                and close_key[5] >= trade_open_key[5] # validate that the close date is greater than the open date
+                and close_key[5] <= trade_open_key[3] # validate that the close trades are before the expiry date
+                ):
+                return close_key  # Return the first matching key
 
     return None
 
 def process_wheel_trades(df):
     try:
         df = df.copy()
+        import datetime
+        #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,5,2))]
+
         df = df.fillna("")
         df = df.groupby(['optionId','symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
             quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
@@ -110,7 +132,7 @@ def process_wheel_trades(df):
             
             if row["assetCategory"] == "Option" and row["openCloseIndicator"] == "Open":
                 # Option Sale Entry
-                key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'])
+                key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'], row['tradeDate'],row["buySell"])
                 processed_trades[key] ={
                     'accountId': row['accountId'],
                     "symbol": symbol,
@@ -148,7 +170,7 @@ def process_wheel_trades(df):
 
             elif row["assetCategory"] == "Option" and row["openCloseIndicator"] == "Close":
                 # Option Buyback (Closing trade)
-                key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'])
+                key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'], row['tradeDate'], row["buySell"])
                 buybacks[key] = {
                     "total_premium": row["total_premium"],
                     "number_of_buyback": row["quantity"],
@@ -157,7 +179,7 @@ def process_wheel_trades(df):
         
             elif row["assetCategory"] == "Stock" and row["buySell"] == "BUY":
                 # Stock Assignment (from Put Option)
-                key = (symbol, 'Put', row["tradePrice"],row["tradeDate"], row['accountId'])
+                key = (symbol, 'Put', row["tradePrice"],row["expiry"], row['accountId'], row['tradeDate'],row["buySell"])
                 assigned_stocks[key] = {
                     "assign_price": row["tradePrice"],  
                     "quantity": row["quantity"],
@@ -168,7 +190,7 @@ def process_wheel_trades(df):
 
             elif row["assetCategory"] == "Stock" and row["buySell"] == "SELL":
                 # Stock Sale
-                key = (symbol, 'Call', row["tradePrice"],row["tradeDate"], row['accountId'])
+                key = (symbol, 'Call', row["tradePrice"],row["expiry"], row['accountId'], row['tradeDate'], row["buySell"])
                 stock_sales[key] = {
                     "sold_price": row["tradePrice"],  
                     "quantity": row["quantity"] ,
@@ -182,20 +204,21 @@ def process_wheel_trades(df):
         for trade_key in processed_trades:
             trade = processed_trades[trade_key]
 
-            assigned_stocks_key = find_matching_key(trade_key,assigned_stocks,trade['trade_open_date'])
-            stock_sales_key = find_matching_key(trade_key,stock_sales,trade['trade_open_date'])
-                
+            assigned_stocks_key = find_matching_key(trade_key,assigned_stocks)
+            stock_sales_key = find_matching_key(trade_key,stock_sales)
+            buybacks_key = find_matching_key(trade_key,buybacks)    
 
             # Add buyback price if it exists
-            if trade_key in buybacks:
-                trade["net_buyback_price"] = buybacks[trade_key]['total_premium']
-                trade["net_premium"] = trade["premium_collected"] + buybacks[trade_key]['total_premium']
-                trade["number_of_buyback"] = buybacks[trade_key]['number_of_buyback']
-                trade["buyback_date"] = buybacks[trade_key]['buyback_date']
-                trade["close_date"] = buybacks[trade_key]['buyback_date']
+            if buybacks_key:
+                trade["net_buyback_price"] = buybacks[buybacks_key]['total_premium']
+                trade["net_premium"] = trade["premium_collected"] + buybacks[buybacks_key]['total_premium']
+                trade["number_of_buyback"] = buybacks[buybacks_key]['number_of_buyback']
+                trade["buyback_date"] = buybacks[buybacks_key]['buyback_date']
+                trade["close_date"] = buybacks[buybacks_key]['buyback_date']
                 trade["status"] = "BOUGHT BACK"
                 trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
-            
+                buybacks.pop(buybacks_key)
+
             if assigned_stocks_key:
                 trade["assign_price_per_share"] = assigned_stocks[assigned_stocks_key]['assign_price']
                 trade["assign_quantity"] = assigned_stocks[assigned_stocks_key]['quantity']
