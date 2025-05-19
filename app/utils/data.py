@@ -105,6 +105,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,5,2))]
+        #df = df[(df['symbol'] == 'SHOP')]
 
         df = df.fillna("")
         df = df.groupby(['optionId','symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
@@ -321,11 +322,11 @@ def process_wheel_trades(df):
         df['net_premium'] = df['net_premium'].apply(lambda x: round(x, 2))
         df['ROI'] = df['ROI'].apply(lambda x: round(x, 2))
 
-
-        return df[['accountId','symbol', 'callorPut', 'buySell', 'trade_open_date', 'expiry_date','strike_price', 
+        df = df[['accountId','symbol', 'callorPut', 'buySell', 'trade_open_date', 'expiry_date','strike_price', 
                    'number_of_contracts_sold', 'premium_collected','net_buyback_price', 'number_of_buyback', 'buyback_date', 'net_premium',
                    'assign_price_per_share', 'assign_quantity','number_of_assign_contract', 'assign_date', 'net_assign_cost','sold_price_per_share', 
                    'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date','ROI','status']]
+        return df
     except Exception as e:
         logging.error(f"Error processing wheel trades: {e}")
         raise
@@ -368,7 +369,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         stock_summary = getStockSummary(filtered_data)
         account_summary = getAccountSummary(stock_summary)
         total_summary = getTotalSummary(account_summary)
-        profit_by_month = getProfitPerTimePeriod(filtered_data)
+        profit_by_month = getProfitPerTimePeriod(filtered_data,stock_summary)
 
 
         # Prepare account-stock dictionary
@@ -401,8 +402,17 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         raise Exception(f"An error occurred: {e}")
 
 def format_processed_data(df):
-    df['key'] = df['symbol'] + '_' + df['callorPut'].astype(str) + '_' + df['strike_price'].astype(str) + '_' + df['expiry_date'].astype(str) + '_' + df['buySell'].astype(str)
-    df = df[['key','number_of_contracts_sold','ROI','status','trade_open_date','month_week','net_premium']]
+    df['type'] = np.where(df['callorPut'] == 0, 'Stock', 'Option')
+    df['key'] = np.where(
+        df['callorPut'] == 0,
+        df['symbol'],
+        df['symbol'] + '_' + df['callorPut'].astype(str) + '_' + df['strike_price'].astype(str) + '_' + df['expiry_date'].astype(str) + '_' + df['buySell'].astype(str)
+    )
+    df['amt'] = np.where(df['callorPut'] == 0, np.where(df['net_assign_cost'] != 0, df['net_assign_cost'], df['net_sold_cost']), df['net_premium'])
+    df['qty'] = np.where(df['callorPut'] == 0, np.where(df['sold_quantity'] != 0, df['sold_quantity'], df['assign_quantity']), df['number_of_contracts_sold'])
+
+
+    df = df[['key','type','qty','ROI','status','trade_open_date','month_week','amt']]
 
     # # if status is open set the trade_open_date to ''
     df.loc[df['status'] == 'OPEN', 'month_week'] = ''
@@ -414,8 +424,8 @@ def format_processed_data(df):
 
     #rename columns
     df.rename(columns={
-        'number_of_contracts_sold': '# Contracts',
-        'net_premium': 'Net Profit',
+        'qty': '# Qty',
+        'amt': '$ Amount',
         'status': 'Status',
         'trade_open_date': 'Trade Open Date',
         'month_week':'Close week'
@@ -438,7 +448,7 @@ def getTotalSummary(df):
         logging.error(f"Error processing getTotalSummary : {e}")
         raise
 
-def getProfitPerTimePeriod(df):
+def getProfitPerTimePeriod(df,stk_smry):
     try:
         # Function to get week of month
         def week_of_month(dt):
@@ -448,24 +458,30 @@ def getProfitPerTimePeriod(df):
             dom = dt.day
             adjusted_dom = dom + first_day.weekday()  # adjust for the weekday of the 1st
             return int(np.ceil(adjusted_dom / 7.0))
+    
 
+        
         # Date-based aggregation
         df['close_date'] = pd.to_datetime(df['close_date'], errors='coerce')
         df['week_of_month'] = df['close_date'].apply(week_of_month)
         df['month_week'] = df['close_date'].dt.strftime('%Y-%m-') + df['week_of_month'].astype(str) + 'W'
         weekly_data = df[df['status'] != 'OPEN'].copy()
         
-        weekly_data_grp = weekly_data.groupby(['month_week']).agg(
+        stk_cost_basis = stk_smry[['accountId','symbol','cost_basis_per_share']].copy()
+        weekly_data_grp_cost_merge = weekly_data.merge(stk_cost_basis, on=['accountId','symbol'], how='left')
+
+        weekly_data_grp = weekly_data_grp_cost_merge.groupby(['month_week']).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
             total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
             total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
+            cost_basis_per_share=pd.NamedAgg(column='cost_basis_per_share', aggfunc='mean'),
         ).reset_index()
 
-        weekly_data_grp['cost_basis_per_share'] = np.where(weekly_data_grp["total_assign_quantity"] > 0,(weekly_data_grp["total_stock_assign_cost"]+weekly_data_grp.get("total_premium_collected", 0.0)) / weekly_data_grp["total_assign_quantity"],0) 
-        weekly_data_grp['total_cost_of_sold_shares'] = weekly_data_grp['cost_basis_per_share'] * weekly_data_grp["total_sold_quantity"]
-        weekly_data_grp['realized_pnl'] = weekly_data_grp["total_stock_sale_cost"] - weekly_data_grp['total_cost_of_sold_shares']
+        weekly_data_grp['cost_base_cost'] = weekly_data_grp['cost_basis_per_share'] * (weekly_data_grp['total_sold_quantity'] * -1)
+        weekly_data_grp['realized_pnl'] = weekly_data_grp['total_stock_sale_cost'] - weekly_data_grp['cost_base_cost']
+
 
         weekly_data_grp["net_profit"] = weekly_data_grp['realized_pnl'] + weekly_data_grp['total_premium_collected']
 
@@ -508,10 +524,19 @@ def getStockSummary(df):
         ).reset_index()
 
         stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']
+        stock_summary['net_assign_qty'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
 
-        stock_summary['cost_basis_per_share'] = np.where(stock_summary["total_assign_quantity"] > 0,(stock_summary["total_stock_assign_cost"]+stock_summary.get("total_premium_collected", 0.0)) / stock_summary["total_assign_quantity"],0) 
-        stock_summary['total_cost_of_sold_shares'] = stock_summary['cost_basis_per_share'] * stock_summary["total_sold_quantity"]
-        stock_summary['realized_pnl'] = stock_summary["total_stock_sale_cost"] - stock_summary['total_cost_of_sold_shares']
+        stock_summary['cost_basis_per_share'] = np.where(stock_summary["net_assign_qty"] > 0,
+                                                         (
+                                                             abs(stock_summary["total_stock_assign_cost"])-(stock_summary.get("total_premium_collected", 0.0) + stock_summary.get("total_premium_collected_open", 0.0))
+                                                          ) / 
+                                                          stock_summary["total_assign_quantity"],0) 
+        
+
+        stock_summary['cost_base_cost'] = stock_summary['cost_basis_per_share'] * (stock_summary['total_sold_quantity'] * -1)
+        stock_summary['realized_pnl'] = stock_summary['total_stock_sale_cost'] - stock_summary['cost_base_cost']
+
+
 
         stock_summary['win_percent'] = np.where(
             stock_summary['total_trades'] > 0,
