@@ -3,7 +3,7 @@ from flask_login import login_required
 from ..utils.data import *
 import pandas as pd
 import numpy as np
-from ..utils.data import format_processed_data
+from ..utils.data import format_processed_data, getStockSummary
 
 bp = Blueprint('stock', __name__)
 
@@ -36,8 +36,8 @@ def stock_details_inner(account_id, symbol):
         'Net Profit': 'Unrealised Profit'
     }, inplace=True)
 
-    stocks_purchased_sold = stock_data[(stock_data["status"].isin(['ASSIGNED']))]
-    stocks_purchased_sold = stocks_purchased_sold[['assign_date','assign_quantity','assign_price_per_share','status']]
+    stocks_purchased_sold = stock_data[(stock_data["status"].isin(['ASSIGNED','SOLD STOCK','BOUGHT STOCK']))]
+    stocks_purchased_sold = format_stock_data(stocks_purchased_sold)
 
     stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
     return render_template('stock_details.html',
@@ -52,6 +52,16 @@ def stock_details_inner(account_id, symbol):
                           )
 
 
+def format_stock_data(df):
+    df = df[['trade_open_date','assign_price_per_share','sold_price_per_share','assign_quantity','sold_quantity','status']]
+    df['Price'] = np.where(df['assign_price_per_share'] == 0, df['sold_price_per_share'] , df['assign_price_per_share'])
+    df['Quantity'] = np.where(df['assign_quantity'] == 0, df['sold_quantity'] , df['assign_quantity'])
+    
+    df.rename(columns={
+        'trade_open_date': 'Date'
+    }, inplace=True)
+
+    return df[['Date','status','Price','Quantity']]
 
 def getTotalSummary(df):
     try:
@@ -64,42 +74,6 @@ def getTotalSummary(df):
         logging.error(f"Error processing getTotalSummary : {e}")
         raise
 
-def getProfitPerTimePeriod(df):
-    try:
-        # Function to get week of month
-        def week_of_month(dt):
-            if pd.isnull(dt):
-                return np.nan
-            first_day = dt.replace(day=1)
-            dom = dt.day
-            adjusted_dom = dom + first_day.weekday()  # adjust for the weekday of the 1st
-            return int(np.ceil(adjusted_dom / 7.0))
-
-        # Date-based aggregation
-        df['close_date'] = pd.to_datetime(df['close_date'], errors='coerce')
-        df['week_of_month'] = df['close_date'].apply(week_of_month)
-        df['month_week'] = df['close_date'].dt.strftime('%Y-%m-') + df['week_of_month'].astype(str) + 'W'
-        weekly_data = df[df['status'] != 'OPEN'].copy()
-        
-        weekly_data_grp = weekly_data.groupby(['month_week']).agg(
-            total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
-            total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
-            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
-            total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
-            total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
-        ).reset_index()
-
-        weekly_data_grp['cost_basis_per_share'] = np.where(weekly_data_grp["total_assign_quantity"] > 0,(weekly_data_grp["total_stock_assign_cost"]+weekly_data_grp.get("total_premium_collected", 0.0)) / weekly_data_grp["total_assign_quantity"],0) 
-        weekly_data_grp['total_cost_of_sold_shares'] = weekly_data_grp['cost_basis_per_share'] * weekly_data_grp["total_sold_quantity"]
-        weekly_data_grp['realized_pnl'] = weekly_data_grp["total_stock_sale_cost"] - weekly_data_grp['total_cost_of_sold_shares']
-
-        weekly_data_grp["net_profit"] = weekly_data_grp['realized_pnl'] + weekly_data_grp['total_premium_collected']
-
-        return weekly_data_grp[['month_week','net_profit']]
-    except Exception as e:
-        logging.error(f"Error processing profit by month: {e}")
-        raise
-
 def getAccountSummary(df):
     try:
         # Group by accountId and sum all other numeric columns
@@ -109,43 +83,5 @@ def getAccountSummary(df):
         return agg_df
     except:
         logging.error(f"Error processing account summary: {e}")
-        raise
-
-def getStockSummary(df):
-    try:
-        # # Stock level aggregation
-        stock_summary = df.groupby(['accountId', 'symbol']).agg(
-            total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[df['status'] != 'OPEN'].sum()),
-            total_premium_collected_open = pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[(df['status'] == 'OPEN') & (df['buySell'] == 'SELL')].sum()),
-            total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[(df['callorPut'].isin(["Call", "Put"]))].count()),
-            total_wins = pd.NamedAgg(
-                            column='symbol',
-                            aggfunc=lambda x: x[(df['net_premium'] > 0) & (df['status'].isin(['EXPIRED', 'BOUGHT BACK']))].count()
-                        ),
-            total_open_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[df['status'] == 'OPEN'].count()),
-            total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
-            total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
-            total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
-            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
-            avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean())
-        ).reset_index()
-
-        stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']
-
-        stock_summary['cost_basis_per_share'] = np.where(stock_summary["total_assign_quantity"] > 0,(stock_summary["total_stock_assign_cost"]+stock_summary.get("total_premium_collected", 0.0)) / stock_summary["total_assign_quantity"],0) 
-        stock_summary['total_cost_of_sold_shares'] = stock_summary['cost_basis_per_share'] * stock_summary["total_sold_quantity"]
-        stock_summary['realized_pnl'] = stock_summary["total_stock_sale_cost"] - stock_summary['total_cost_of_sold_shares']
-
-        stock_summary['win_percent'] = np.where(
-            stock_summary['total_trades'] > 0,
-            (stock_summary['total_wins'] / stock_summary['total_trades']) * 100,
-            0
-        )
-
-        stock_summary["net_profit"] = stock_summary['realized_pnl'] + stock_summary['total_premium_collected']
-
-        return stock_summary.round(2)
-    except Exception as e:
-        logging.error(f"Error processing stock summary: {e}")
         raise
 

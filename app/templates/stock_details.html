@@ -14,19 +14,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-
-    <!-- HEADER -->
     <header>
         <img src="static/images/image.jpg" alt="Logo" class="logo">
         <h1>Options Tracker</h1>
         <a href="/dashboard" class="home-button">Home</a>
     </header>
 
-    <!-- MAIN CONTENT -->
-    <div class="content">
+    <div class="content"> 
         <h2>Account: {{ account_id }} | Stock: {{ symbol }} | ({{global_filter_type}})</h2>
 
-        <!-- STATS SECTION -->
         <div class="stats-container">
             <div class="card">
                 <h4>Total Premium</h4>
@@ -90,7 +86,7 @@
             </table>
         </div>
 
-        <!-- Closed Trades Table -->
+        
         <div class="table-container">
             <h3>All Closed Trades</h3>
             <table id="closed-data-table" class="display" style="width:100%">
@@ -103,8 +99,7 @@
                 </thead>
                 <tbody>
                     {% for row in closed_data %}
-    
-                    <tr class="{{ 'win' if row[6] > 0 else 'loss_row'}}">
+                    <tr class="{{ 'win' if row[7] > 0 else 'loss_row'}}">
                         {% for cell in row %}
                         <td>{{ cell }}</td>
                         {% endfor %}
@@ -114,7 +109,7 @@
             </table>
         </div>
 
-        <!-- Stocks Trades Table -->
+        
         <div class="table-container">
             <h3>All Stock Trades</h3>
             <table id="stocks_purchased_sold-table" class="display" style="width:100%">
@@ -127,8 +122,7 @@
                 </thead>
                 <tbody>
                     {% for row in stocks_purchased_sold_data %}
-    
-                    <tr">
+                    <tr>
                         {% for cell in row %}
                         <td>{{ cell }}</td>
                         {% endfor %}

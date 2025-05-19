@@ -82,7 +82,7 @@ class IBKRBroker(BaseBroker):
                 max_date = datetime(1900, 1, 1)
             else:
                 # subtract 5 days to get the last 5 days of data
-                max_date = max_date - timedelta(days=5)
+                max_date = max_date - timedelta(days=1)
 
             root = ET.fromstring(data)
             parsed_data = []
@@ -101,7 +101,7 @@ class IBKRBroker(BaseBroker):
                                                 stock = trade_ele.attrib["underlyingSymbol"]
                                                 option_id = trade_ele.attrib["tradeID"]
                                             
-                                            if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") > datetime.combine(max_date, datetime.min.time())):
+                                            if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") >= datetime.combine(max_date, datetime.min.time())):
                                                 obj = Trade(
                                                         option_id,trade_ele.attrib["tradeDate"], 
                                                         trade_ele.attrib["accountId"], 

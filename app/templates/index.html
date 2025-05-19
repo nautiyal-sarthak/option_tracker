@@ -138,7 +138,8 @@
                                     <span>total profit: <span class="{{ 'profit' if stock.net_profit >= 0 else 'loss' }}">{{stock.net_profit}}</span></span>
                                     <span>stock sale P/L: <span class="{{ 'profit' if stock.realized_pnl >= 0 else 'loss' }}">{{stock.realized_pnl}}</span></span>
                                     <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_lost_trades }}</span> ({{ stock.win_percent }}%)</span>
-                                    <span>Stocks Qty: {{ stock.total_assign_quantity }}</span>
+                                    <span>Stocks Qty: {{ stock.net_assign_qty }}</span>
+                                    <span>Cost Bases: {{ stock.cost_basis_per_share }}</span>
                                     <span>Open trades: {{ stock.total_open_trades }}</span>
                                     <span>ROI: {{ stock.avg_ROI }} %</span>
                                 </div>
@@ -174,7 +175,7 @@
             
             <tbody>
                 {% for row in all_trades %}
-                    <tr class="{{ 'win' if (row['Net Profit']>0 ) else 'loss_row'}}">
+                    <tr class="{{ 'win' if (row['$ Amount']>0 ) else 'loss_row'}}">
                         {% for value in row.values() %}
                             <td>{{ value }}</td>
                         {% endfor %}
@@ -267,7 +268,7 @@
 
     // Add each row with dynamic class
     tradesData.forEach(row => {
-        const rowClass = row['Net Profit'] > 0 ? 'win' : 'loss_row';
+        const rowClass = row['$ Amount'] > 0 ? 'win' : 'loss_row';
         const $row = $('<tr>').addClass(rowClass);
 
         columnOrder.forEach(col => {
@@ -377,7 +378,7 @@
                                                     <span>total profit: <span class="${stock.net_profit >= 0 ? 'profit' : 'loss'}">${stock.net_profit.toLocaleString()}</span></span>
                                                     <span>stock sale P/L: <span class="${stock.realized_pnl >= 0 ? 'profit' : 'loss'}">${stock.realized_pnl.toLocaleString()}</span></span>
                                                     <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_lost_trades}</span> (${stock.win_percent !== null ? stock.win_percent.toFixed(2) : 'N/A'}%)</span>
-                                                    <span>Stocks Qty: ${stock.total_assign_quantity}</span>
+                                                    <span>Stocks Qty: ${stock.net_assign_qty}</span>
                                                     <span>Open trades: ${stock.total_open_trades}</span>
                                                     <span>ROI: ${stock.avg_ROI} %</span>
                                                 </div>
