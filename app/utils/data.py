@@ -494,7 +494,7 @@ def getAccountSummary(df):
     try:
         agg_df = df.groupby('accountId', as_index=False).agg({
                     'avg_ROI': 'mean',  # Calculate the mean for the ROI column
-                    **{col: 'sum' for col in df.select_dtypes(include='number').columns if col != 'ROI'}  # Sum for other numeric columns
+                    **{col: 'sum' for col in df.select_dtypes(include='number').columns if col != 'avg_ROI'}  # Sum for other numeric columns
                 })
 
         # Round all numeric columns to 2 decimal places
@@ -522,6 +522,9 @@ def getStockSummary(df):
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
             avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean())
         ).reset_index()
+
+        # populate all missing value for avg_ROI to 0
+        stock_summary['avg_ROI'] = stock_summary['avg_ROI'].fillna(0.0)
 
         stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']
         stock_summary['net_assign_qty'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
