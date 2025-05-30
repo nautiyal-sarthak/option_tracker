@@ -21,23 +21,33 @@ def dashboard():
             return redirect(url_for('auth.provide_token'))
         return jsonify({"error": error_message})
 
+
 @bp.route('/get_data', methods=['GET'])
 @login_required
 def get_data():
     try:
-        current_app.logger.info('fetching user data with filter' + request.args.get('filter', 'all'))
+        # Log the filter and grouping parameters
         filter_type = request.args.get('filter', 'all')
+        grouping = request.args.get('grouping', 'month')  # Default to 'month'
+        current_app.logger.info(f"Fetching user data with filter: {filter_type}, grouping: {grouping}")
+        
+        # Store filter_type in session
         session['filter_type'] = filter_type
-        data = process_trade_data(current_user.email, filter_type=filter_type)
+        
+        # Pass both filter_type and grouping to process_trade_data
+        data = process_trade_data(current_user.email, filter_type=filter_type, grouping=grouping)
+        
+        # Validate JSON serialization
         try:
             parsed_data = json.dumps(data)
-            print("Valid JSON")
+            current_app.logger.debug("Valid JSON")
         except Exception as e:
-            print("Invalid JSON")
-
-        return data
+            current_app.logger.error(f"Invalid JSON: {str(e)}")
+        
+        return jsonify(data)  # Ensure response is JSON
     except Exception as e:
         error_message = str(e)
+        current_app.logger.error(f"Error in get_data: {error_message}")
         if "authentication" in error_message.lower():
             return redirect(url_for('auth.provide_token'))
-        return jsonify({"error": error_message})
+        return jsonify({"error": error_message}), 500

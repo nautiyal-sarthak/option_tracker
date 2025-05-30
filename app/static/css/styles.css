@@ -203,3 +203,28 @@ header h1 {
     height: 80px; /* Increased height for better resolution */
     max-width: 100%;
 }
+
+.filter-container {
+    margin-bottom: 10px;
+}
+.filter-container label {
+    margin-right: 5px;
+}
+.filter-container select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.chart-container {
+    width: 100%;
+    max-width: 1200px; /* Adjust as needed */
+    height: 400px; /* Fixed height for the chart */
+    position: relative;
+    margin-bottom: 20px;
+}
+
+#profitChart {
+    width: 100% !important;
+    height: 100% !important;
+}
