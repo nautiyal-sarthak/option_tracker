@@ -331,7 +331,7 @@ def process_wheel_trades(df):
         logging.error(f"Error processing wheel trades: {e}")
         raise
 
-def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
+def process_trade_data(email,token=None,broker_name=None,filter_type='all',grouping='month'):
     try:
         # check if session['master_trade_data'] is populated
         # if so, return the data from the session
@@ -369,7 +369,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all'):
         stock_summary = getStockSummary(filtered_data)
         account_summary = getAccountSummary(stock_summary)
         total_summary = getTotalSummary(account_summary)
-        profit_by_month = getProfitPerTimePeriod(filtered_data,stock_summary)
+        profit_by_month = getProfitPerTimePeriod(filtered_data,stock_summary,grouping)
 
 
         # Prepare account-stock dictionary
@@ -448,7 +448,7 @@ def getTotalSummary(df):
         logging.error(f"Error processing getTotalSummary : {e}")
         raise
 
-def getProfitPerTimePeriod(df,stk_smry):
+def getProfitPerTimePeriod(df,stk_smry,grouping):
     try:
         # Function to get week of month
         def week_of_month(dt):
@@ -465,12 +465,18 @@ def getProfitPerTimePeriod(df,stk_smry):
         df['close_date'] = pd.to_datetime(df['close_date'], errors='coerce')
         df['week_of_month'] = df['close_date'].apply(week_of_month)
         df['month_week'] = df['close_date'].dt.strftime('%Y-%m-') + df['week_of_month'].astype(str) + 'W'
+        df['year_month'] = df['close_date'].dt.strftime('%Y-%m')
         weekly_data = df[df['status'] != 'OPEN'].copy()
         
         stk_cost_basis = stk_smry[['accountId','symbol','cost_basis_per_share']].copy()
         weekly_data_grp_cost_merge = weekly_data.merge(stk_cost_basis, on=['accountId','symbol'], how='left')
 
-        weekly_data_grp = weekly_data_grp_cost_merge.groupby(['month_week']).agg(
+        if grouping == 'month':
+            key = 'year_month'
+        elif grouping == 'week':
+            key = 'month_week'
+
+        weekly_data_grp = weekly_data_grp_cost_merge.groupby([key]).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
@@ -479,13 +485,16 @@ def getProfitPerTimePeriod(df,stk_smry):
             cost_basis_per_share=pd.NamedAgg(column='cost_basis_per_share', aggfunc='mean'),
         ).reset_index()
 
+        # rename the key column to month_week or year_month
+        weekly_data_grp.rename(columns={key: 'period'}, inplace=True)
+
         weekly_data_grp['cost_base_cost'] = weekly_data_grp['cost_basis_per_share'] * (weekly_data_grp['total_sold_quantity'] * -1)
         weekly_data_grp['realized_pnl'] = weekly_data_grp['total_stock_sale_cost'] - weekly_data_grp['cost_base_cost']
 
 
         weekly_data_grp["net_profit"] = weekly_data_grp['realized_pnl'] + weekly_data_grp['total_premium_collected']
 
-        return weekly_data_grp[['month_week','net_profit']]
+        return weekly_data_grp[['period','net_profit']]
     except Exception as e:
         logging.error(f"Error processing profit by month: {e}")
         raise
