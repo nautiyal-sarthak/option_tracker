@@ -105,10 +105,10 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,5,2))]
-        #df = df[(df['symbol'] == 'SHOP')]
+        df = df[(df['symbol'] == 'QQQ')]
 
         df = df.fillna("")
-        df = df.groupby(['optionId','symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
+        df = df.groupby(['symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
             quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
             commission=pd.NamedAgg(column='commission', aggfunc='sum'),
             total_premium=pd.NamedAgg(column='total_premium', aggfunc='sum')
