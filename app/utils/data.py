@@ -105,7 +105,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,5,2))]
-        #df = df[(df['symbol'] == 'QQQ')]
+        #df = df[(df['symbol'] == 'ACHR')]
 
         df = df.fillna("")
         df = df.groupby(['symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
@@ -546,7 +546,7 @@ def getStockSummary(df):
         
 
         stock_summary['cost_base_cost'] = stock_summary['cost_basis_per_share'] * (stock_summary['total_sold_quantity'] * -1)
-        stock_summary['realized_pnl'] = stock_summary['total_stock_sale_cost'] - stock_summary['cost_base_cost']
+        stock_summary['realized_pnl'] = stock_summary['total_stock_sale_cost'] + stock_summary['total_stock_assign_cost']
 
 
 
