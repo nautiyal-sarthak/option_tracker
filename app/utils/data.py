@@ -105,7 +105,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,5,2))]
-        #df = df[(df['symbol'] == 'ACHR')]
+        #df = df[(df['symbol'] == 'ACHR') | (df['symbol'] == 'SHOP')]
 
         df = df.fillna("")
         df = df.groupby(['symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(
@@ -466,35 +466,40 @@ def getProfitPerTimePeriod(df,stk_smry,grouping):
         df['week_of_month'] = df['close_date'].apply(week_of_month)
         df['month_week'] = df['close_date'].dt.strftime('%Y-%m-') + df['week_of_month'].astype(str) + 'W'
         df['year_month'] = df['close_date'].dt.strftime('%Y-%m')
-        weekly_data = df[df['status'] != 'OPEN'].copy()
-        
-        stk_cost_basis = stk_smry[['accountId','symbol','cost_basis_per_share']].copy()
-        weekly_data_grp_cost_merge = weekly_data.merge(stk_cost_basis, on=['accountId','symbol'], how='left')
+        weekly_data = df[df['status'] != 'OPEN'].copy() 
 
         if grouping == 'month':
-            key = 'year_month'
+            key = ['year_month','symbol','accountId']
         elif grouping == 'week':
-            key = 'month_week'
+            key = ['month_week','symbol','accountId']
 
-        weekly_data_grp = weekly_data_grp_cost_merge.groupby([key]).agg(
+        weekly_data_grp = weekly_data.groupby(key).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
             total_stock_sale_cost=pd.NamedAgg(column='net_sold_cost', aggfunc='sum'),
-            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
-            total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
-            total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
-            cost_basis_per_share=pd.NamedAgg(column='cost_basis_per_share', aggfunc='mean'),
+            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum')
         ).reset_index()
 
+        stk_smry['stk_avg_cost'] = (abs(stk_smry["total_stock_assign_cost"])/stk_smry["total_assign_quantity"])
+        stk_cost_basis = stk_smry[['accountId','symbol','stk_avg_cost']].copy()
+        weekly_data_grp_cost_merge = weekly_data_grp.merge(stk_cost_basis, on=['accountId','symbol'], how='left')
+
+
+
+        weekly_data_grp_cost_merge['total_cost_of_sold_shares'] = (weekly_data_grp_cost_merge['stk_avg_cost']) * weekly_data_grp_cost_merge["total_sold_quantity"]
+        weekly_data_grp_cost_merge['realized_pnl'] = abs(weekly_data_grp_cost_merge['total_stock_sale_cost']) - abs(weekly_data_grp_cost_merge['total_cost_of_sold_shares'])
+
+        
+
+        weekly_data_grp_cost_merge["net_profit"] = weekly_data_grp_cost_merge['realized_pnl'] + weekly_data_grp_cost_merge['total_premium_collected']
+
         # rename the key column to month_week or year_month
-        weekly_data_grp.rename(columns={key: 'period'}, inplace=True)
+        weekly_data_grp_cost_merge.rename(columns={key[0]: 'period'}, inplace=True)
 
-        weekly_data_grp['cost_base_cost'] = weekly_data_grp['cost_basis_per_share'] * (weekly_data_grp['total_sold_quantity'] * -1)
-        weekly_data_grp['realized_pnl'] = weekly_data_grp['total_stock_sale_cost'] - weekly_data_grp['cost_base_cost']
+        out_df = weekly_data_grp_cost_merge.groupby(['period']).agg(
+            net_profit=pd.NamedAgg(column='net_profit', aggfunc='sum')
+        ).reset_index()
 
-
-        weekly_data_grp["net_profit"] = weekly_data_grp['realized_pnl'] + weekly_data_grp['total_premium_collected']
-
-        return weekly_data_grp[['period','net_profit']]
+        return out_df[['period','net_profit']]
     except Exception as e:
         logging.error(f"Error processing profit by month: {e}")
         raise
@@ -539,15 +544,18 @@ def getStockSummary(df):
         stock_summary['net_assign_qty'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
 
         stock_summary['cost_basis_per_share'] = np.where(stock_summary["net_assign_qty"] > 0,
-                                                         (
-                                                             abs(stock_summary["total_stock_assign_cost"])-(stock_summary.get("total_premium_collected", 0.0) + stock_summary.get("total_premium_collected_open", 0.0))
-                                                          ) / 
-                                                          stock_summary["total_assign_quantity"],0) 
+                                                (
+                                                    abs(stock_summary["total_stock_assign_cost"])-
+                                                        (stock_summary.get("total_premium_collected", 0.0) 
+                                                        + stock_summary.get("total_premium_collected_open", 0.0))
+                                                ) / 
+                                                stock_summary["total_assign_quantity"],0) 
         
 
-        stock_summary['cost_base_cost'] = stock_summary['cost_basis_per_share'] * (stock_summary['total_sold_quantity'] * -1)
-        stock_summary['realized_pnl'] = stock_summary['total_stock_sale_cost'] + stock_summary['total_stock_assign_cost']
 
+        
+        stock_summary['total_cost_of_sold_shares'] = (abs(stock_summary["total_stock_assign_cost"])/stock_summary["total_assign_quantity"]) * stock_summary["total_sold_quantity"]
+        stock_summary['realized_pnl'] = abs(stock_summary['total_stock_sale_cost']) - abs(stock_summary['total_cost_of_sold_shares'])
 
 
         stock_summary['win_percent'] = np.where(
