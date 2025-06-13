@@ -482,7 +482,7 @@ def getProfitPerTimePeriod(df,stk_smry,grouping):
         stk_smry['stk_avg_cost'] = (abs(stk_smry["total_stock_assign_cost"])/stk_smry["total_assign_quantity"])
         stk_cost_basis = stk_smry[['accountId','symbol','stk_avg_cost']].copy()
         weekly_data_grp_cost_merge = weekly_data_grp.merge(stk_cost_basis, on=['accountId','symbol'], how='left')
-
+        weekly_data_grp_cost_merge['stk_avg_cost'] = weekly_data_grp_cost_merge['stk_avg_cost'].fillna(0.0)
 
 
         weekly_data_grp_cost_merge['total_cost_of_sold_shares'] = (weekly_data_grp_cost_merge['stk_avg_cost']) * weekly_data_grp_cost_merge["total_sold_quantity"]
@@ -538,7 +538,7 @@ def getStockSummary(df):
         ).reset_index()
 
         # populate all missing value for avg_ROI to 0
-        stock_summary['avg_ROI'] = stock_summary['avg_ROI'].fillna(0.0)
+        stock_summary = stock_summary.fillna(0.0)
 
         stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']
         stock_summary['net_assign_qty'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
@@ -555,7 +555,9 @@ def getStockSummary(df):
 
         
         stock_summary['total_cost_of_sold_shares'] = (abs(stock_summary["total_stock_assign_cost"])/stock_summary["total_assign_quantity"]) * stock_summary["total_sold_quantity"]
+        stock_summary['total_cost_of_sold_shares'] = stock_summary['total_cost_of_sold_shares'].fillna(0.0)
         stock_summary['realized_pnl'] = abs(stock_summary['total_stock_sale_cost']) - abs(stock_summary['total_cost_of_sold_shares'])
+        stock_summary['total_cost_of_sold_shares'] = stock_summary['total_cost_of_sold_shares'].fillna(0.0)
 
 
         stock_summary['win_percent'] = np.where(
@@ -566,6 +568,7 @@ def getStockSummary(df):
 
         stock_summary["net_profit"] = stock_summary['realized_pnl'] + stock_summary['total_premium_collected']
 
+        
         return stock_summary.round(2)
     except Exception as e:
         logging.error(f"Error processing stock summary: {e}")
