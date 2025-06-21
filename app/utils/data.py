@@ -105,7 +105,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,5,2))]
-        #df = df[(df['symbol'] == 'ACHR') | (df['symbol'] == 'SHOP')]
+        df = df[(df['symbol'] == 'HIMS')]
 
         df = df.fillna("")
         df = df.groupby(['symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradePrice','tradeDate','assetCategory','expiry']).agg(

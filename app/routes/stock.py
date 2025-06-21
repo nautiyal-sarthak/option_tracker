@@ -36,7 +36,7 @@ def stock_details_inner(account_id, symbol):
         'Net Profit': 'Unrealised Profit'
     }, inplace=True)
 
-    stocks_purchased_sold = stock_data[(stock_data["status"].isin(['ASSIGNED','SOLD STOCK','BOUGHT STOCK']))]
+    stocks_purchased_sold = stock_data[(stock_data["status"].isin(['ASSIGNED','SOLD STOCK','BOUGHT STOCK','TAKEN AWAY']))]
     stocks_purchased_sold = format_stock_data(stocks_purchased_sold)
 
     stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
