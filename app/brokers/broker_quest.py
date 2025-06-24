@@ -76,7 +76,7 @@ class QuestradeBroker(BaseBroker):
             trades = []
 
             # Start from the next day after the last recorded trade
-            start_date = db_max_date - timedelta(days=1)
+            start_date = db_max_date - timedelta(days=5)
             end_date = datetime.today()  # Yesterday's date
 
 
@@ -102,7 +102,11 @@ class QuestradeBroker(BaseBroker):
                                 obj['timestamp'] = element['tradeDate']
                                 obj['id'] = str(element['settlementDate']) + str(element['symbolId']) + str(element['quantity'])
                                 obj['price'] = element['price']
-                                obj['side'] = "BTC"
+                                if element['action'] == 'Sell':
+                                    obj['side'] = "STC"
+                                else:
+                                    obj['side'] = "BTC"
+
                                 obj['quantity'] = element['quantity']
                                 obj['symbol'] = element['symbol']
                                 obj['commission'] = element['commission']
