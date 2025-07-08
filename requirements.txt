@@ -1,6 +1,7 @@
 Flask
 pandas
 requests
+numpy
 yfinance
 flask-sqlalchemy
 flask-login
@@ -8,5 +9,5 @@ authlib
 flask_session
 python-dotenv
 psycopg2-binary
-
-
+setuptools
+ 

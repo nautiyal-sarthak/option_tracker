@@ -12,11 +12,18 @@
     <header>
         <img src="{{ url_for('static', filename='images/image.jpg') }}" alt="Logo" class="logo">
         <h1>Options Tracker</h1>
-        <a href="/import" class="home-button">Logout</a>
-        <a href="/logout" class="home-button">Logout</a>
+        <a href="/logout" class="logout-button">Logout</a>
+       
+        <div class="tabs-container">
+            <nav class="tabs">
+                <a href="/" class="tab active">HOME</a>
+                <a href="/scanner" class="tab">Scanner</a>
+            </nav>
+        </div>
+        
+        
     </header>
     <p>Hi, {{ current_user.name }} </p>
-    <p>Data since {{oldest_date}}</p>
     <div class="content">
         <!-- Filter Buttons -->
         <div class="filter-container">

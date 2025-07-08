@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Tracker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script> 
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/yadcf/0.9.4/jquery.dataTables.yadcf.css"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='images/image.jpg') }}" alt="Logo" class="logo">
+        <h1>Scanner</h1>
+        <a href="/logout" class="logout-button">Logout</a>
+        <div class="tabs-container">
+            <nav class="tabs">
+                <a href="/dashboard" class="tab">HOME</a>
+                <a href="/scanner" class="tab active">Scanner</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="content"> 
+        <div class="table-container">
+            <table id="suggestion_tbl" class="display" style="width:100%">
+                <thead>
+                    <tr>
+                        {% for col in sug_cols %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sug_data %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <script>
+            $(document).ready(function() {
+                $('#suggestion_tbl').DataTable({
+                    "paging": false,
+                    "lengthChange": false,
+                    "searching": true,
+                    "ordering": true,
+                    "info": true,
+                    "autoWidth": false,
+                    "order": [[1, "desc"]], // Default sort by the second column
+                    // Add column definitions to handle rendering of call_% and put_% columns
+                    columnDefs: [
+                        {
+                            targets: '_all', // Apply to all columns initially
+                            render: function(data, type, row, meta) {
+                                // Get the column header
+                                var columnHeader = $('#suggestion_tbl').DataTable().settings()[0].aoColumns[meta.col].sTitle;
+                                // Check if the column is call_% or put_%
+                                if (columnHeader === 'call_%' || columnHeader === 'put_%') {
+                                    // Parse the data as a number (remove any % sign if present)
+                                    var value = parseFloat(data.replace('%', '')) || 0;
+                                    // Ensure value is between 0 and 100
+                                    value = Math.max(0, Math.min(100, value));
+                                    // Calculate color intensity (0-255)
+                                    var intensity = Math.round(value * 2.55);
+                                    // Apply blue for call_% and red for put_%
+                                    var backgroundColor = columnHeader === 'call_%' 
+                                        ? `rgb(0, 0, ${intensity})` 
+                                        : `rgb(${intensity}, 0, 0)`;
+                                    // Return the data wrapped with a styled span
+                                    return `<span style="background-color: ${backgroundColor}; color: white; display: block; padding: 2px;">${data}</span>`;
+                                }
+                                return data; // Return unchanged data for other columns
+                            }
+                        }
+                    ]
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>

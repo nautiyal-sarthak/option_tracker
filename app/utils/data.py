@@ -367,6 +367,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
         #raw_df = filter_by_time_period(raw_df, filter_type,"tradeDate")
 
         stock_summary = getStockSummary(filtered_data)
+        session['stock_summary'] = stock_summary
         account_summary = getAccountSummary(stock_summary)
         total_summary = getTotalSummary(account_summary)
         profit_by_month = getProfitPerTimePeriod(filtered_data,stock_summary,grouping)
