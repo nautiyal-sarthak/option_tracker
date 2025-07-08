@@ -21,7 +21,7 @@ header {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
 }
-.home-button {
+.logout-button {
     position: absolute;
     right: 20px;
     top: 20px;
@@ -31,8 +31,10 @@ header {
     text-decoration: none;
     border-radius: 4px;
     transition: background-color 0.3s;
+    margin-bottom: 10px;
+    display: block;
 }
-.home-button:hover {
+.logout-button:hover {
     background-color: #45a049;
 }
 .logo {
@@ -122,6 +124,8 @@ header h1 {
     margin: 0;
     text-align: center;
     flex-grow: 1;
+    position: relative;
+    padding-bottom: 20px; 
 }
 .section {
     width: 48%;
@@ -227,4 +231,37 @@ header h1 {
 #profitChart {
     width: 100% !important;
     height: 100% !important;
+}
+
+.tabs-container {
+    position: absolute;
+    bottom: 0; /* Position tabs at the bottom of the header */
+    width: 100%; /* Make the container span the full width */
+    display: flex;
+    justify-content: center; /* Center-align the tabs */
+}
+
+.tabs {
+    display: flex;
+    justify-content: center; /* Center-align the tabs */
+    gap: 15px; /* Add spacing between tabs */
+    margin-top: 20px; /* Add space between the logout button and tabs */
+}
+
+.tab {
+    text-decoration: none;
+    color: rgb(0, 0, 0);
+    padding: 5px 10px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+}
+
+.tab:hover {
+    background-color: #f0f0f0;
+}
+
+.tab.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
 }

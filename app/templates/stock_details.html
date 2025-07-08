@@ -15,9 +15,18 @@
 </head>
 <body>
     <header>
-        <img src="static/images/image.jpg" alt="Logo" class="logo">
+        <img src="{{ url_for('static', filename='images/image.jpg') }}" alt="Logo" class="logo">
         <h1>Options Tracker</h1>
-        <a href="/dashboard" class="home-button">Home</a>
+        <a href="/logout" class="logout-button">Logout</a>
+       
+        <div class="tabs-container">
+            <nav class="tabs">
+                <a href="/dashboard" class="tab">HOME</a>
+                <a href="/scanner" class="tab">Scanner</a>
+            </nav>
+        </div>
+        
+        
     </header>
 
     <div class="content"> 

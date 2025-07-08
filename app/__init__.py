@@ -51,10 +51,11 @@ def create_app():
     )
 
     # Import and register blueprints
-    from .routes import auth, dashboard, stock
+    from .routes import auth, dashboard, stock, scanner
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(stock.bp)
+    app.register_blueprint(scanner.bp)
 
     return app
 
