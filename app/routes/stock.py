@@ -18,6 +18,7 @@ def stock_details_inner(account_id, symbol):
     grouping = request.args.get('grouping', 'month')
     
     global_trade_info = session['master_trade_data']
+    stk_cost_per_share = session['stk_cost_per_share']
 
     stock_data = global_trade_info[
         (global_trade_info['accountId'] == account_id) & 
@@ -26,7 +27,7 @@ def stock_details_inner(account_id, symbol):
     stock_data = filter_by_time_period(stock_data, filter_type)
 
     # Get summary data
-    processed_data_global_stk_grp = getStockSummary(stock_data)
+    processed_data_global_stk_grp = getStockSummary(stock_data,stk_cost_per_share)
     stock_data_formated = format_processed_data(stock_data)
     
     stock_data_open = stock_data_formated[(stock_data_formated["Status"] == 'OPEN')]

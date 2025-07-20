@@ -362,12 +362,32 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
             processed_data = session['master_trade_data']
             raw_df = session['raw_df']
 
-    
+        stk_cost_per_share = processed_data.groupby(['accountId', 'symbol']).agg(
+            total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[processed_data['status'] != 'OPEN'].sum()),
+            total_premium_collected_open = pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[(processed_data['status'] == 'OPEN') & (processed_data['buySell'] == 'SELL')].sum()),
+            total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
+            total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
+            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
+        ).reset_index()
+
+        stk_cost_per_share['net_assign_qty'] = stk_cost_per_share['total_assign_quantity'] + stk_cost_per_share['total_sold_quantity']
+        stk_cost_per_share['cost_basis_per_share'] = np.where(stk_cost_per_share["net_assign_qty"] > 0,
+                                                (
+                                                    abs(stk_cost_per_share["total_stock_assign_cost"])-
+                                                        (stk_cost_per_share.get("total_premium_collected", 0.0) 
+                                                        + stk_cost_per_share.get("total_premium_collected_open", 0.0))
+                                                ) / 
+                                                stk_cost_per_share["total_assign_quantity"],0) 
+
+        stk_cost_per_share = stk_cost_per_share[['accountId', 'symbol', 'cost_basis_per_share']].copy()
+        stk_cost_per_share = stk_cost_per_share.fillna(0.0)
+        session['stk_cost_per_share'] = stk_cost_per_share
+
         # Apply time filter
         filtered_data = filter_by_time_period(processed_data, filter_type)
         #raw_df = filter_by_time_period(raw_df, filter_type,"tradeDate")
 
-        stock_summary = getStockSummary(filtered_data)
+        stock_summary = getStockSummary(filtered_data,stk_cost_per_share)
         session['stock_summary'] = stock_summary
         account_summary = getAccountSummary(stock_summary)
         total_summary = getTotalSummary(account_summary)
@@ -522,7 +542,7 @@ def getAccountSummary(df):
         logging.error(f"Error processing account summary: {e}")
         raise
 
-def getStockSummary(df):
+def getStockSummary(df, stk_cost_per_share):
     try:
         # # Stock level aggregation
         stock_summary = df.groupby(['accountId', 'symbol']).agg(
@@ -541,24 +561,18 @@ def getStockSummary(df):
             avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean())
         ).reset_index()
 
+        # Merge with stock cost per share
+        stock_summary = stock_summary.merge(stk_cost_per_share, on=['accountId', 'symbol'], how='left')
+
         # populate all missing value for avg_ROI to 0
         stock_summary = stock_summary.fillna(0.0)
 
         stock_summary['total_lost_trades'] = stock_summary['total_trades'] - stock_summary['total_wins']
         stock_summary['net_assign_qty'] = stock_summary['total_assign_quantity'] + stock_summary['total_sold_quantity']
 
-        stock_summary['cost_basis_per_share'] = np.where(stock_summary["net_assign_qty"] > 0,
-                                                (
-                                                    abs(stock_summary["total_stock_assign_cost"])-
-                                                        (stock_summary.get("total_premium_collected", 0.0) 
-                                                        + stock_summary.get("total_premium_collected_open", 0.0))
-                                                ) / 
-                                                stock_summary["total_assign_quantity"],0) 
-        
-
 
         
-        stock_summary['total_cost_of_sold_shares'] = (abs(stock_summary["total_stock_assign_cost"])/stock_summary["total_assign_quantity"]) * stock_summary["total_sold_quantity"]
+        stock_summary['total_cost_of_sold_shares'] = abs(stock_summary["cost_basis_per_share"]) * stock_summary["total_sold_quantity"]
         stock_summary['total_cost_of_sold_shares'] = stock_summary['total_cost_of_sold_shares'].fillna(0.0)
         stock_summary['realized_pnl'] = abs(stock_summary['total_stock_sale_cost']) - abs(stock_summary['total_cost_of_sold_shares'])
         stock_summary['total_cost_of_sold_shares'] = stock_summary['total_cost_of_sold_shares'].fillna(0.0)
@@ -613,6 +627,6 @@ def filter_by_time_period(df, filter_type, col_name='trade_open_date'):
 
     condition_1 = (df[col_name] >= start_date) & (df[col_name] <= end_date)
     condition_2 = (df['close_date'].dt.date >= start_date) & (df['close_date'].dt.date <= end_date)
-    return df[condition_1 | condition_2]
+    return df[condition_1 | condition_2 ]
 
     
