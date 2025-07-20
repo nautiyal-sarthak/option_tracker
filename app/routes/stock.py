@@ -169,7 +169,7 @@ def get_stock_data():
     ].reset_index(drop=True)
     stock_data = filter_by_time_period(stock_data, filter_type)
 
-    processed_data_global_stk_grp = getStockSummary(stock_data)
+    processed_data_global_stk_grp = getStockSummary(stock_data, session['stk_cost_per_share'])
     profit_by_group = getProfitPerTimePeriod(stock_data, processed_data_global_stk_grp, grouping)
 
     return profit_by_group.to_dict(orient="records")
