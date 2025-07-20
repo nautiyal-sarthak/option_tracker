@@ -370,15 +370,11 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
         ).reset_index()
 
-        stk_cost_per_share['net_assign_qty'] = stk_cost_per_share['total_assign_quantity'] + stk_cost_per_share['total_sold_quantity']
-        stk_cost_per_share['cost_basis_per_share'] = np.where(stk_cost_per_share["net_assign_qty"] > 0,
-                                                (
-                                                    abs(stk_cost_per_share["total_stock_assign_cost"])-
-                                                        (stk_cost_per_share.get("total_premium_collected", 0.0) 
-                                                        + stk_cost_per_share.get("total_premium_collected_open", 0.0))
-                                                ) / 
-                                                stk_cost_per_share["total_assign_quantity"],0) 
-
+        stk_cost_per_share['cost_basis_per_share'] = (
+                                    (abs(stk_cost_per_share["total_stock_assign_cost"]) - 
+                                    (stk_cost_per_share.get("total_premium_collected", 0.0) + stk_cost_per_share.get("total_premium_collected_open", 0.0)))
+                                    /stk_cost_per_share["total_assign_quantity"])
+        
         stk_cost_per_share = stk_cost_per_share[['accountId', 'symbol', 'cost_basis_per_share']].copy()
         stk_cost_per_share = stk_cost_per_share.fillna(0.0)
         session['stk_cost_per_share'] = stk_cost_per_share
@@ -576,6 +572,13 @@ def getStockSummary(df, stk_cost_per_share):
         stock_summary['total_cost_of_sold_shares'] = stock_summary['total_cost_of_sold_shares'].fillna(0.0)
         stock_summary['realized_pnl'] = abs(stock_summary['total_stock_sale_cost']) - abs(stock_summary['total_cost_of_sold_shares'])
         stock_summary['total_cost_of_sold_shares'] = stock_summary['total_cost_of_sold_shares'].fillna(0.0)
+
+        # IF THE total_assign_quantity is 0 then set the cost_basis_per_share to 0
+        stock_summary['cost_basis_per_share'] = np.where(
+            stock_summary['net_assign_qty'] > 0,
+            stock_summary['cost_basis_per_share'],
+            0.0
+        )
 
 
         stock_summary['win_percent'] = np.where(
