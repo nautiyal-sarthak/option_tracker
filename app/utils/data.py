@@ -474,6 +474,8 @@ def getProfitPerTimePeriod(df,stk_smry,grouping):
             key = ['year_month','symbol','accountId']
         elif grouping == 'week':
             key = ['month_week','symbol','accountId']
+        elif grouping == 'day':
+            key = ['close_date','symbol','accountId']
 
         weekly_data_grp = weekly_data.groupby(key).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc='sum'),
