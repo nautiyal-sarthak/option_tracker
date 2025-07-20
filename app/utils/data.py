@@ -112,7 +112,7 @@ def process_wheel_trades(df):
             quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
             commission=pd.NamedAgg(column='commission', aggfunc='sum'),
             total_premium=pd.NamedAgg(column='total_premium', aggfunc='sum'),
-            tradePrice=pd.NamedAgg(column='tradePrice', aggfunc='sum')
+            tradePrice=pd.NamedAgg(column='tradePrice', aggfunc='mean')
         ).reset_index()
 
         df["asset_priority"] = df["putCall"].apply(lambda x: 1 if x in ["Call", "Put"] else 2)
