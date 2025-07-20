@@ -77,6 +77,7 @@
                     <select id="chart-grouping" onchange="updateChartGrouping(this)">
                         <option value="month">Month</option>
                         <option value="week">Week</option>
+                        <option value="day">Day</option>
                     </select>
                 </div>
                 <canvas id="profitChart"></canvas>
@@ -269,32 +270,32 @@
         }
 
         function updateTable(tradesData) {
-    if (!tradesData || !tradesData.length) return;
+            if (!tradesData || !tradesData.length) return;
 
-    const table = $('#tradesTable').DataTable();
+            const table = $('#tradesTable').DataTable();
 
-    // Get the column order from the table header
-    const columnOrder = $('#tradesTable thead th').map(function () {
-        return $(this).text().trim();
-    }).get();
+            // Get the column order from the table header
+            const columnOrder = $('#tradesTable thead th').map(function () {
+                return $(this).text().trim();
+            }).get();
 
-    // Clear the table
-    table.clear();
+            // Clear the table
+            table.clear();
 
-    // Add each row with dynamic class
-    tradesData.forEach(row => {
-        const rowClass = row['$ Amount'] > 0 ? 'win' : 'loss_row';
-        const $row = $('<tr>').addClass(rowClass);
+            // Add each row with dynamic class
+            tradesData.forEach(row => {
+                const rowClass = row['$ Amount'] > 0 ? 'win' : 'loss_row';
+                const $row = $('<tr>').addClass(rowClass);
 
-        columnOrder.forEach(col => {
-            $row.append($('<td>').text(row[col]));
-        });
+                columnOrder.forEach(col => {
+                    $row.append($('<td>').text(row[col]));
+                });
 
-        table.row.add($row);
-    });
+                table.row.add($row);
+            });
 
-    table.draw();
-}
+            table.draw();
+        }
 
     
 function getData(filter, grouping = 'month') {
