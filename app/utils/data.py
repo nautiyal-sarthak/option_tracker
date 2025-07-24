@@ -370,6 +370,8 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
         ).reset_index()
 
+        
+
         stk_cost_per_share['cost_basis_per_share'] = (
                                     (abs(stk_cost_per_share["total_stock_assign_cost"]) - 
                                     (stk_cost_per_share.get("total_premium_collected", 0.0) + stk_cost_per_share.get("total_premium_collected_open", 0.0)))
@@ -377,6 +379,9 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
         
         stk_cost_per_share = stk_cost_per_share[['accountId', 'symbol', 'cost_basis_per_share']].copy()
         stk_cost_per_share = stk_cost_per_share.fillna(0.0)
+        # set all inf value to zer0
+        stk_cost_per_share.replace([np.inf, -np.inf], 0, inplace=True)
+        
         session['stk_cost_per_share'] = stk_cost_per_share
 
         # Apply time filter
