@@ -81,7 +81,7 @@ def get_max_trade_date(email):
     cursor = conn.cursor()
     
     try:
-        cursor.execute("SELECT MAX(tradeDate) FROM trades WHERE user_id = %s;", (email,))
+        cursor.execute("SELECT MAX(tradeDate) - INTERVAL '1 day' FROM trades WHERE user_id = %s;", (email,))
         max_date = cursor.fetchone()[0]
         return max_date
     except Exception as e:
