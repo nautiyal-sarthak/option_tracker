@@ -11,9 +11,7 @@ bp = Blueprint('dashboard', __name__)
 def dashboard():
     try:
         current_app.logger.info('loading the dashboard')
-        data = process_trade_data(current_user.email, current_user.token, current_user.broker, 'all')
-        session['filter_type'] = 'all'
-
+        data = process_trade_data(current_user.email, current_user.token, current_user.broker)
         return render_template('index.html', **data)
     except Exception as e:
         error_message = str(e)
@@ -27,15 +25,17 @@ def dashboard():
 def get_data():
     try:
         # Log the filter and grouping parameters
-        filter_type = request.args.get('filter', 'all')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
         grouping = request.args.get('grouping', 'month')  # Default to 'month'
-        current_app.logger.info(f"Fetching user data with filter: {filter_type}, grouping: {grouping}")
+        
         
         # Store filter_type in session
-        session['filter_type'] = filter_type
+        session['start_date'] = start_date
+        session['end_date'] = end_date
         
         # Pass both filter_type and grouping to process_trade_data
-        data = process_trade_data(current_user.email, filter_type=filter_type, grouping=grouping)
+        data = process_trade_data(current_user.email, start_date=start_date,end_date=end_date, grouping=grouping)
         
         # Validate JSON serialization
         try:

@@ -16,4 +16,8 @@ def convert_to_serializable(obj):
         return [convert_to_serializable(item) for item in obj]
     elif isinstance(obj, float) and math.isnan(obj):
         return None  # Replace NaN with null
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif isinstance(obj, datetime.date):
+        return obj.isoformat()
     return obj
