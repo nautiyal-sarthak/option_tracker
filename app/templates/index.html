@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Options Tracker</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Options Tracker</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+        <!-- Daterangepicker CSS -->
+        <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    </head>
 <body>
     <header>
         <img src="{{ url_for('static', filename='images/image.jpg') }}" alt="Logo" class="logo">
@@ -21,19 +23,13 @@
             </nav>
         </div>
         
-        
     </header>
     <p>Hi, {{ current_user.name }} </p>
     <div class="content">
-        <!-- Filter Buttons -->
+        <!-- Date Range Picker -->
         <div class="filter-container">
-            <button class="filter-btn" onclick="selectFilter(this, '15days')">15 Days</button>
-            <button class="filter-btn" onclick="selectFilter(this, '1month')">1 Month</button>
-            <button class="filter-btn" onclick="selectFilter(this, '3months')">3 Months</button>
-            <button class="filter-btn" onclick="selectFilter(this, '6months')">6 Months</button>
-            <button class="filter-btn" onclick="selectFilter(this, '1year')">1 Year</button>
-            <button class="filter-btn" onclick="selectFilter(this, 'lastyear')">Last Year</button>
-            <button class="filter-btn selected" onclick="selectFilter(this, 'all')">Since Inception</button>
+            <label for="daterange">Select Date Range:</label>
+            <input type="text" name="daterange" id="daterange" style="padding: 6px 12px; font-size: 12px;" />
         </div>
 
         <!-- STATS SECTION -->
@@ -298,8 +294,8 @@
         }
 
     
-function getData(filter, grouping = 'month') {
-    fetch(`/get_data?filter=${filter}&grouping=${grouping}`)
+function getData(startDate, endDate, grouping = 'month') {
+    fetch(`/get_data?start_date=${startDate}&end_date=${endDate}&grouping=${grouping}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -429,8 +425,17 @@ function getData(filter, grouping = 'month') {
 
         function updateChartGrouping(selectElement) {
             const grouping = selectElement.value;
-            const selectedFilter = document.querySelector('.filter-btn.selected').getAttribute('onclick').match(/'([^']+)'/)[1];
-            getData(selectedFilter, grouping);
+            const startDate = document.querySelector('input[name="daterange"]').value.split(' - ')[0];
+            const endDate = document.querySelector('input[name="daterange"]').value.split(' - ')[1] || new Date().toISOString().split('T')[0];
+            
+            const [s_month, s_day, s_year] = startDate.split('/');
+            const formattedStartDate = `${s_year}-${s_month}-${s_day}`;
+
+            const [e_month, e_day, e_year] = endDate.split('/');
+            const formattedEndDate = `${e_year}-${e_month}-${e_day}`;
+
+            getData(formattedStartDate, formattedEndDate, grouping);
+            
         }
     </script>
     
@@ -513,26 +518,56 @@ function filterStocks(selectElement) {
 
     </script>
 
+
+
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<!-- Moment.js and Daterangepicker -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
 
 <script>
-    $(document).ready(function () {
-        // Initialize DataTable
-        var table = $('#tradesTable').DataTable({
-            "pageLength": 10,
-            "order": [[5, "desc"]]
+            $(document).ready(function () {
+            // Initialize DataTable
+            var table = $('#tradesTable').DataTable({
+                "pageLength": 10,
+                "order": [[5, "desc"]]
+            });
+
+            $('#tradesTable tfoot input').on('keyup change clear', function () {
+                var colIndex = $(this).parent().index();
+                table.column(colIndex).search(this.value).draw();
+            });
+
+            const OLDEST_TRADE_DATE = "{{ oldest_trade_date }}";
+            const inceptionStart = moment(OLDEST_TRADE_DATE);
+            const today = moment();
+
+            // Daterangepicker initialization
+            $('#daterange').daterangepicker({
+                opens: 'left',
+                ranges: {
+                    'Since Inception': [inceptionStart, today],
+                    'Today': [moment(), moment()],
+                    'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    'This Week': [moment().startOf('week'), moment().endOf('week')],
+                    'Last Week': [moment().subtract(1, 'week').startOf('week'), moment().subtract(1, 'week').endOf('week')],
+                    'This Month': [moment().startOf('month'), moment().endOf('month')],
+                    'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')],
+                    'Last 7 Days': [moment().subtract(6, 'days'), moment()]
+                },
+                startDate: inceptionStart,
+                endDate: today
+            }, function(start, end, label) {
+                const grouping = document.getElementById('chart-grouping').value || 'month';
+                getData(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'), grouping);
+            });
         });
 
-        // Apply column filters
-        $('#tradesTable tfoot input').on('keyup change clear', function () {
-            var colIndex = $(this).parent().index();
-            table.column(colIndex).search(this.value).draw();
-        });
-    });
+
+    
 </script>
-
-
 
 </body>
 </html>

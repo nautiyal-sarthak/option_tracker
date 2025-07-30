@@ -332,12 +332,12 @@ def process_wheel_trades(df):
         logging.error(f"Error processing wheel trades: {e}")
         raise
 
-def process_trade_data(email,token=None,broker_name=None,filter_type='all',grouping='month'):
+def process_trade_data(email,token=None,broker_name=None,start_date=None,end_date=None,grouping='month'):
     try:
         # check if session['master_trade_data'] is populated
         # if so, return the data from the session
         # if not, fetch the data from the broker
-        current_app.logger.info('fetching user data with filter' + filter_type)
+        
         if (session.get('master_trade_data') is None) or session.get('adhoc_email'):
             current_app.logger.info('fetching data from broker')
             is_test = False
@@ -380,7 +380,7 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
         session['stk_cost_per_share'] = stk_cost_per_share
 
         # Apply time filter
-        filtered_data = filter_by_time_period(processed_data, filter_type)
+        filtered_data = filter_by_time_period(processed_data, start_date, end_date)
         #raw_df = filter_by_time_period(raw_df, filter_type,"tradeDate")
 
         stock_summary = getStockSummary(filtered_data,stk_cost_per_share)
@@ -395,7 +395,24 @@ def process_trade_data(email,token=None,broker_name=None,filter_type='all',group
         for item in stock_summary.round(2).to_dict(orient='records'):
             account_dict[item['accountId']].append(item)
 
+        if total_summary.empty:
+            session['oldest_trade_date'] = '1990-01-01'
+        else:
+            min_date_value = total_summary['min_date'].values[0]
+
+            if isinstance(min_date_value, float) and np.isnan(min_date_value):
+                session['oldest_trade_date'] = '1990-01-01'  # Or assign a default value like 'N/A'
+            else:
+                session['oldest_trade_date'] = min_date_value.strftime('%Y-%m-%d')
+        
+        
+        # Store filter_type in session
+        if session.get('start_date') is None or session.get('end_date') is None:
+            session['start_date'] = total_summary['min_date'].values[0].strftime('%Y-%m-%d')
+            session['end_date'] = date.today().strftime('%Y-%m-%d')
+
         data = {
+            'oldest_trade_date': total_summary['min_date'].values[0],
             'total_premium_collected': total_summary['total_premium_collected'].values[0],
             'total_premium_collected_open': total_summary['total_premium_collected_open'].values[0],
             "total_premium_formated": str(total_summary['total_premium_collected'].values[0]) + f"({total_summary['total_premium_collected_open'].values[0]})",
@@ -458,6 +475,7 @@ def getTotalSummary(df):
         agg_df = df.copy()
         agg_df = agg_df.sum(numeric_only=True).to_frame().T
         agg_df['avg_ROI'] = df['avg_ROI'].mean()  # Add the mean of the ROI column
+        agg_df['min_date'] = df['min_date'].min()  # Get the earliest trade date
 
         # Round all numeric columns to 2 decimal places
         agg_df = agg_df.round(2)
@@ -528,6 +546,7 @@ def getAccountSummary(df):
     try:
         agg_df = df.groupby('accountId', as_index=False).agg({
                     'avg_ROI': 'mean',  # Calculate the mean for the ROI column
+                    'min_date': 'min',  # Get the earliest trade date
                     **{col: 'sum' for col in df.select_dtypes(include='number').columns if col != 'avg_ROI'}  # Sum for other numeric columns
                 })
 
@@ -554,7 +573,8 @@ def getStockSummary(df, stk_cost_per_share):
             total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
             total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
-            avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean())
+            avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean()),
+            min_date=pd.NamedAgg(column='trade_open_date', aggfunc='min')
         ).reset_index()
 
         # Merge with stock cost per share
@@ -596,37 +616,19 @@ def getStockSummary(df, stk_cost_per_share):
         raise
 
 
-def filter_by_time_period(df, filter_type, col_name='trade_open_date'):
-    today = datetime.now()
-    end_date = today
-    
-    if filter_type == '15days':
-        start_date = today - timedelta(days=15)
-    elif filter_type == '1month':
-        start_date = today - timedelta(days=30)
-    elif filter_type == '3months':
-        start_date = today - timedelta(days=90)
-    elif filter_type == '6months':
-        start_date = today - timedelta(days=180)
-    elif filter_type == '1year':
-        start_date = today - timedelta(days=365)
-    elif filter_type == 'lastyear':    
-        start_date = datetime(today.year - 1, 1, 1)  # January 1st of the previous year
-        end_date = datetime(today.year - 1, 12, 31)
-    elif filter_type == 'all':
+def filter_by_time_period(df, start_date=None,end_date=None, col_name='trade_open_date'):
+    if start_date is None and end_date is None:
         return df
     else:
-        start_date = df[col_name].min()
-    
-    # Ensure start_date is a date object
-    if isinstance(start_date, str):
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-    elif isinstance(start_date, datetime):
-        start_date = start_date.date()
-    if isinstance(end_date, str):
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-    elif isinstance(end_date, datetime):
-        end_date = end_date.date()
+        # Ensure start_date is a date object
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        elif isinstance(start_date, datetime):
+            start_date = start_date.date()
+        if isinstance(end_date, str):
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        elif isinstance(end_date, datetime):
+            end_date = end_date.date()
 
     condition_1 = (df[col_name] >= start_date) & (df[col_name] <= end_date)
     condition_2 = (df['close_date'].dt.date >= start_date) & (df['close_date'].dt.date <= end_date)

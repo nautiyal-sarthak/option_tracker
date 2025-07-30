@@ -9,12 +9,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Daterangepicker CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
     <!-- jQuery and DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
 </head>
 
 <body>
@@ -32,7 +37,13 @@
 </header>
 
 <div class="content"> 
-    <h2>Account: {{ account_id }} | Stock: {{ symbol }} | ({{ global_filter_type }})</h2>
+    <h2>Account: {{ account_id }} | Stock: {{ symbol }} </h2>
+
+    <!-- Date Range Picker -->
+    <div class="filter-container">
+        <label for="daterange">Select Date Range:</label>
+        <input type="text" name="daterange" id="daterange" style="padding: 6px 12px; font-size: 12px;" />
+    </div>
 
     <!-- Summary Cards -->
     <div class="stats-container">
@@ -67,9 +78,9 @@
         <div class="filter-container mb-2">
             <label for="chart-grouping">Group by:</label>
             <select id="chart-grouping" onchange="updateChartGrouping(this)">
-                <option value="month">Month</option>
-                <option value="week">Week</option>
-                <option value="day">Day</option>
+                <option value="month" {% if grouping == 'month' %}selected{% endif %}>Month</option>
+                <option value="week" {% if grouping == 'week' %}selected{% endif %}>Week</option>
+                <option value="day" {% if grouping == 'day' %}selected{% endif %}>Day</option>
             </select>
         </div>
         <canvas id="profitChart" height="400"></canvas>
@@ -112,7 +123,6 @@
     {% endfor %}
 </div>
 
-<!-- Table Init Scripts -->
 <script>
     $(document).ready(function () {
         $('table.display').each(function () {
@@ -154,6 +164,45 @@
                 });
             }
         });
+
+        const filter_start = "{{ filter_start }}";
+        const filter_end = "{{ filter_end }}";
+        const inception_date = "{{ oldest_trade_date }}"
+
+        const inceptionStart = moment(inception_date);
+        const startDate = moment(filter_start);
+        const inceptionEnd = moment(filter_end);
+        const today = moment();
+
+        // Daterangepicker initialization
+        $('#daterange').daterangepicker({
+            opens: 'left',
+            ranges: {
+                'Since Inception': [inceptionStart, today],
+                'Today': [moment(), moment()],
+                'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                'This Week': [moment().startOf('week'), moment().endOf('week')],
+                'Last Week': [moment().subtract(1, 'week').startOf('week'), moment().subtract(1, 'week').endOf('week')],
+                'This Month': [moment().startOf('month'), moment().endOf('month')],
+                'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')],
+                'Last 7 Days': [moment().subtract(6, 'days'), moment()]
+            },
+            startDate: startDate,
+            endDate: inceptionEnd
+        }, function(start, end, label) {
+            const startDate = start.format('YYYY-MM-DD');
+            const endDate = end.format('YYYY-MM-DD');
+            const params = new URLSearchParams(window.location.search);
+
+            // Preserve current grouping if present
+            const grouping = document.getElementById('chart-grouping').value || 'month';
+            params.set('start_date', startDate);
+            params.set('end_date', endDate);
+            params.set('grouping', grouping);
+
+            // Redirect to the same page with updated query parameters
+            window.location.href = `${window.location.pathname}?${params.toString()}`;
+});
     });
 </script>
 
@@ -212,8 +261,18 @@
         const grouping = select.value;
         const accountId = "{{ account_id }}";
         const symbol = "{{ symbol }}";
+
+        const startDate = document.querySelector('input[name="daterange"]').value.split(' - ')[0];
+        const endDate = document.querySelector('input[name="daterange"]').value.split(' - ')[1] || new Date().toISOString().split('T')[0];
+        
+        const [s_month, s_day, s_year] = startDate.split('/');
+        const formattedStartDate = `${s_year}-${s_month}-${s_day}`;
+
+        const [e_month, e_day, e_year] = endDate.split('/');
+        const formattedEndDate = `${e_year}-${e_month}-${e_day}`;
+
     
-        fetch(`/get_stock_data?account_id=${accountId}&symbol=${symbol}&grouping=${grouping}`)
+        fetch(`/get_stock_data?account_id=${accountId}&symbol=${symbol}&grouping=${grouping}&start_date=${formattedStartDate}&end_date=${formattedEndDate}`)
             .then(res => res.json())
             .then(data => {
                 if (data.error) {

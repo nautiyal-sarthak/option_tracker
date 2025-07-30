@@ -4,59 +4,108 @@ from ..utils.data import *
 import pandas as pd
 import numpy as np
 from ..utils.data import format_processed_data, getStockSummary
+from datetime import date
 
 bp = Blueprint('stock', __name__)
 
 @bp.route('/account/<account_id>/symbol/<symbol>')
 @login_required
 def stock_details_inner(account_id, symbol):
-    current_app.logger.info('fetching the details for the stock ' + symbol)
+    current_app.logger.info(f'Fetching stock details for {symbol}')
+    
     if session.get('master_trade_data') is None:
         return "Stock data is not available yet. Please try again later."
-    
-    filter_type = session['filter_type']
+
+    # Read from query params
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
     grouping = request.args.get('grouping', 'month')
-    
+
+    # Fall back to session values if query params are missing
+    if not start_date:
+        start_date = session.get('start_date')
+    if not end_date:
+        end_date = session.get('end_date')
+
+    oldest_trade_date = session['oldest_trade_date']
+
+
     global_trade_info = session['master_trade_data']
     stk_cost_per_share = session['stk_cost_per_share']
 
     stock_data = global_trade_info[
-        (global_trade_info['accountId'] == account_id) & 
+        (global_trade_info['accountId'] == account_id) &
         (global_trade_info['symbol'] == symbol)
     ].reset_index()
-    stock_data = filter_by_time_period(stock_data, filter_type)
+
+    stock_data = filter_by_time_period(stock_data, start_date, end_date)
 
     # Get summary data
-    processed_data_global_stk_grp = getStockSummary(stock_data,stk_cost_per_share)
+    processed_data_global_stk_grp = getStockSummary(stock_data, stk_cost_per_share)
     stock_data_formated = format_processed_data(stock_data)
-    
+
     stock_data_open = stock_data_formated[(stock_data_formated["Status"] == 'OPEN')]
     stock_data_close = stock_data_formated[(stock_data_formated["Status"] != 'OPEN')]
 
-    stock_data_open.drop(columns=['ROI', 'Status','Close week'], inplace=True)
-    stock_data_open.rename(columns={
-        'Net Profit': 'Unrealised Profit'
-    }, inplace=True)
+    stock_data_open.drop(columns=['ROI', 'Status', 'Close week'], inplace=True)
+    stock_data_open.rename(columns={'Net Profit': 'Unrealised Profit'}, inplace=True)
 
-    stocks_purchased_sold = stock_data[(stock_data["status"].isin(['ASSIGNED','SOLD STOCK','BOUGHT STOCK','TAKEN AWAY']))]
+    stocks_purchased_sold = stock_data[
+        stock_data["status"].isin(['ASSIGNED', 'SOLD STOCK', 'BOUGHT STOCK', 'TAKEN AWAY'])
+    ]
     stocks_purchased_sold = format_stock_data(stocks_purchased_sold)
 
-    stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
+    # if no trades are found, return an empty summary
+    sample_summary = {
+        'accountId': '',
+        'symbol': '',
+        'total_premium_collected': 0,
+        'total_premium_collected_open': 0.0,
+        'total_trades': 0,
+        'total_wins': 0,
+        'total_open_trades': 0,
+        'total_stock_sale_cost': 0.0,
+        'total_stock_assign_cost': 0.0,
+        'total_assign_quantity': 0,
+        'total_sold_quantity': 0,
+        'avg_ROI': 0.0,
+        'min_date': date(2025, 7, 8),
+        'cost_basis_per_share': 0.0,
+        'total_lost_trades': 0,
+        'net_assign_qty': 0,
+        'total_cost_of_sold_shares': 0.0,
+        'realized_pnl': 0.0,
+        'win_percent': 0,
+        'net_profit': 0
+    }
 
 
-    profit_by_month = getProfitPerTimePeriod(stock_data,processed_data_global_stk_grp,grouping)
+    if not processed_data_global_stk_grp.empty:
+        stk_smry = processed_data_global_stk_grp.to_dict(orient='records')[0]
+    else:
+        stk_smry = sample_summary
+        
+    print("stk_smry:", stk_smry)
+
+    profit_by_month = getProfitPerTimePeriod(stock_data, processed_data_global_stk_grp, grouping)
 
     return render_template('stock_details.html',
-                          account_id=account_id,
-                          global_filter_type=session['filter_type'],
-                          symbol=symbol,
-                          stk_smry=stk_smry,
-                          open_cols=stock_data_open.columns, open_data=stock_data_open.values.tolist(),
-                          closed_cols=stock_data_close.columns, closed_data=stock_data_close.values.tolist(),
-                          stocks_purchased_sold_cols=stocks_purchased_sold.columns,
-                          stocks_purchased_sold_data=stocks_purchased_sold.values.tolist(),
-                          profit_data= profit_by_month.to_dict(orient='records')
-                          )
+                           filter_start= start_date,
+                           filter_end= end_date,
+                           account_id=account_id,
+                           symbol=symbol,
+                           stk_smry=stk_smry,
+                           open_cols=stock_data_open.columns,
+                           open_data=stock_data_open.values.tolist(),
+                           closed_cols=stock_data_close.columns,
+                           closed_data=stock_data_close.values.tolist(),
+                           stocks_purchased_sold_cols=stocks_purchased_sold.columns,
+                           stocks_purchased_sold_data=stocks_purchased_sold.values.tolist(),
+                           profit_data=profit_by_month.to_dict(orient='records'),
+                           oldest_trade_date=oldest_trade_date ,
+                           grouping=grouping
+                           
+                           )
 
 
 def format_stock_data(df):
@@ -157,7 +206,8 @@ def get_stock_data():
     account_id = request.args.get('account_id')
     symbol = request.args.get('symbol')
     grouping = request.args.get('grouping', 'month')
-    filter_type = session['filter_type']
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
 
     global_trade_info = session.get('master_trade_data')
     if global_trade_info is None:
@@ -167,7 +217,8 @@ def get_stock_data():
         (global_trade_info['accountId'] == account_id) & 
         (global_trade_info['symbol'] == symbol)
     ].reset_index(drop=True)
-    stock_data = filter_by_time_period(stock_data, filter_type)
+    
+    stock_data = filter_by_time_period(stock_data, start_date, end_date)
 
     processed_data_global_stk_grp = getStockSummary(stock_data, session['stk_cost_per_share'])
     profit_by_group = getProfitPerTimePeriod(stock_data, processed_data_global_stk_grp, grouping)
