@@ -104,7 +104,7 @@ def process_wheel_trades(df):
     try:
         df = df.copy()
         import datetime
-        #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,7,15))]
+        #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,7,29)) & (df['strike'] == 636)]
         #df = df[(df['symbol'] == 'HIMS')]
 
         df = df.fillna("")
@@ -203,6 +203,7 @@ def process_wheel_trades(df):
 
 
         # Update processed trades with buybacks, rolls, assignments, early exercises, and P/L
+        partial_trades = {}
         for trade_key in processed_trades:
             trade = processed_trades[trade_key]
 
@@ -212,14 +213,28 @@ def process_wheel_trades(df):
 
             # Add buyback price if it exists
             if buybacks_key:
+                
+                if abs(buybacks[buybacks_key]['number_of_buyback']) != abs(trade['number_of_contracts_sold']):
+                    left_trades = trade.copy()
+                    left_trades['number_of_contracts_sold'] = trade['number_of_contracts_sold'] + buybacks[buybacks_key]['number_of_buyback']
+                    left_trades['premium_collected'] = (trade['premium_collected'] / abs(trade['number_of_contracts_sold'])) * abs(left_trades['number_of_contracts_sold'])
+                    left_trades['net_premium'] = left_trades['premium_collected']
+                    partial_trades[trade_key] = left_trades
+
+                    trade["premium_collected"] = (trade["premium_collected"] / abs(trade["number_of_contracts_sold"])) * (abs(buybacks[buybacks_key]['number_of_buyback']))
+                    trade['number_of_contracts_sold'] = buybacks[buybacks_key]['number_of_buyback'] * -1
+                
+                
                 trade["net_buyback_price"] = buybacks[buybacks_key]['total_premium']
                 trade["net_premium"] = trade["premium_collected"] + buybacks[buybacks_key]['total_premium']
                 trade["number_of_buyback"] = buybacks[buybacks_key]['number_of_buyback']
                 trade["buyback_date"] = buybacks[buybacks_key]['buyback_date']
                 trade["close_date"] = buybacks[buybacks_key]['buyback_date']
                 trade["status"] = "BOUGHT BACK"
-                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
+                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_buyback"]) * 100)) * 100
+                
                 buybacks.pop(buybacks_key)
+
 
             if assigned_stocks_key:
                 trade["assign_price_per_share"] = assigned_stocks[assigned_stocks_key]['assign_price']
@@ -252,6 +267,13 @@ def process_wheel_trades(df):
                 trade["status"] = "EXPIRED"
                 trade["close_date"] = trade["expiry_date"]
                 trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
+
+        for trade_key in partial_trades:
+            trade = partial_trades[trade_key]
+            trade["status"] = "EXPIRED"
+            trade["close_date"] = trade["expiry_date"]
+            trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
+
 
 
         for key, value in assigned_stocks.items():
@@ -313,6 +335,12 @@ def process_wheel_trades(df):
                 }
 
         df = pd.DataFrame(processed_trades).transpose()
+
+        # add partial_trades to the df
+        if partial_trades:
+            partial_df = pd.DataFrame(partial_trades).transpose()
+            df = pd.concat([df, partial_df], ignore_index=True)
+
         df = df.fillna(0)
         df = df.reset_index()
         # is open trade
