@@ -214,15 +214,15 @@ def process_wheel_trades(df):
             # Add buyback price if it exists
             if buybacks_key:
                 
-                if abs(buybacks[buybacks_key]['number_of_buyback']) != abs(trade['number_of_contracts_sold']):
-                    left_trades = trade.copy()
-                    left_trades['number_of_contracts_sold'] = trade['number_of_contracts_sold'] + buybacks[buybacks_key]['number_of_buyback']
-                    left_trades['premium_collected'] = (trade['premium_collected'] / abs(trade['number_of_contracts_sold'])) * abs(left_trades['number_of_contracts_sold'])
-                    left_trades['net_premium'] = left_trades['premium_collected']
-                    partial_trades[trade_key] = left_trades
+                # if abs(buybacks[buybacks_key]['number_of_buyback']) != abs(trade['number_of_contracts_sold']):
+                #     left_trades = trade.copy()
+                #     left_trades['number_of_contracts_sold'] = trade['number_of_contracts_sold'] + buybacks[buybacks_key]['number_of_buyback']
+                #     left_trades['premium_collected'] = (trade['premium_collected'] / abs(trade['number_of_contracts_sold'])) * abs(left_trades['number_of_contracts_sold'])
+                #     left_trades['net_premium'] = left_trades['premium_collected']
+                #     partial_trades[trade_key] = left_trades
 
-                    trade["premium_collected"] = (trade["premium_collected"] / abs(trade["number_of_contracts_sold"])) * (abs(buybacks[buybacks_key]['number_of_buyback']))
-                    trade['number_of_contracts_sold'] = buybacks[buybacks_key]['number_of_buyback'] * -1
+                #     trade["premium_collected"] = (trade["premium_collected"] / abs(trade["number_of_contracts_sold"])) * (abs(buybacks[buybacks_key]['number_of_buyback']))
+                #     trade['number_of_contracts_sold'] = buybacks[buybacks_key]['number_of_buyback'] * -1
                 
                 
                 trade["net_buyback_price"] = buybacks[buybacks_key]['total_premium']
