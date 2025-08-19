@@ -111,6 +111,7 @@ class QuestradeBroker(BaseBroker):
                                 obj['symbol'] = element['symbol']
                                 obj['commission'] = element['commission']
                                 obj['totalCost'] = element['price']
+                                obj['timestamp'] = element['tradeDate']
                                 trades.append(obj)
         
                 if "executions" in response:
@@ -207,7 +208,8 @@ class QuestradeBroker(BaseBroker):
                     quantity=str(quantity),  # Ensure string if your Trade class expects it
                     tradePrice=str(trade["price"]),
                     commission=str(trade["commission"] * -1),
-                    assetCategory=asset_category
+                    assetCategory=asset_category,
+                    timestamp=trade["timestamp"]
                 )
             parsed_data.append(obj)
         

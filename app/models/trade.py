@@ -1,5 +1,5 @@
 class Trade:
-    def __init__(self,optionId,tradeDate, accountId, symbol, putCall,buySell, openCloseIndicator, strike, expiry, quantity, tradePrice, commission,assetCategory):
+    def __init__(self,optionId,tradeDate, accountId, symbol, putCall,buySell, openCloseIndicator, strike, expiry, quantity, tradePrice, commission,assetCategory,timestamp):
         self.optionId = optionId # a key to link the buy and sell trades for a given option
         self.tradeDate = tradeDate # the date the trade was executed
         self.accountId = accountId # account id
@@ -13,8 +13,9 @@ class Trade:
         self.tradePrice = tradePrice # the trade price of 1 share 
         self.commission = commission # total commission
         self.assetCategory = assetCategory # Stock or Option
+        self.timestamp = timestamp # timestamp of the trade, can be set later
 
 
     def __repr__(self):
-        return f"Trade({self.optionId} ,{self.tradeDate}, {self.accountId}, {self.symbol}, {self.putCall}, {self.buySell}, {self.openCloseIndicator}, {self.strike}, {self.expiry}, {self.quantity}, {self.tradePrice}, {self.commission} , {self.assetCategory})"
+        return f"Trade({self.optionId} ,{self.tradeDate}, {self.accountId}, {self.symbol}, {self.putCall}, {self.buySell}, {self.openCloseIndicator}, {self.strike}, {self.expiry}, {self.quantity}, {self.tradePrice}, {self.commission} , {self.assetCategory} , {self.timestamp})"
     
