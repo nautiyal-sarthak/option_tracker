@@ -113,7 +113,8 @@ class IBKRBroker(BaseBroker):
                                                         trade_ele.attrib["quantity"], 
                                                         trade_ele.attrib["tradePrice"], 
                                                         trade_ele.attrib["ibCommission"],  
-                                                        trade_ele.attrib["assetCategory"]
+                                                        trade_ele.attrib["assetCategory"],
+                                                        datetime.strptime(trade_ele.attrib["dateTime"], "%Y%m%d;%H%M%S")
                                                     )
                                             
                                                 parsed_data.append(obj)
@@ -134,7 +135,8 @@ class IBKRBroker(BaseBroker):
                                                         trade_ele.attrib["quantity"], 
                                                         trade_ele.attrib["closePrice"], 
                                                         trade_ele.attrib["ibCommission"],  
-                                                        trade_ele.attrib["assetCategory"]
+                                                        trade_ele.attrib["assetCategory"],
+                                                        datetime.strptime(trade_ele.attrib["dateTime"], "%Y%m%d;%H%M%S")
                                                     )
                                             
                                             

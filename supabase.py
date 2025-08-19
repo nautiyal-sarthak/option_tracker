@@ -96,7 +96,7 @@ def get_all_trades(email):
     cursor = conn.cursor()
     
     try:
-        cursor.execute("SELECT optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, strike, expiry, quantity, tradePrice, commission, assetCategory FROM trades WHERE user_id = %s;", (email,))
+        cursor.execute("SELECT optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, strike, expiry, quantity, tradePrice, commission, assetCategory, timestamp FROM trades WHERE user_id = %s;", (email,))
         rows = cursor.fetchall()
         trades = [Trade(*row) for row in rows]
         return trades
@@ -124,6 +124,7 @@ def preprocess_trades(trades):
         "tradePrice": trade.tradePrice,
         "commission": trade.commission,
         "assetCategory": trade.assetCategory,
+        "timestamp": trade.timestamp
     } for trade in trades if trade.symbol not in ['DLR.TO','DLR.U.TO']])
 
     # Convert appropriate columns to numeric (handling None values)
@@ -132,11 +133,12 @@ def preprocess_trades(trades):
     df["tradePrice"] = pd.to_numeric(df["tradePrice"], errors="coerce")
     df["commission"] = pd.to_numeric(df["commission"], errors="coerce")
 
+
     # Group by all columns except `quantity`, summing `quantity`
     grouped_df = df.groupby([
         "optionId", "tradeDate", "accountId", "symbol", "putCall",
         "buySell", "openCloseIndicator", "strike", "expiry", 
-        "commission", "assetCategory"
+        "commission", "assetCategory","timestamp"
     ], dropna=False, as_index=False).agg(
         {"quantity": "sum",
          "tradePrice": "mean"})
@@ -153,8 +155,8 @@ def insert_trades(trades, email):
         insert_query = """
             INSERT INTO trades (
                 user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
-                strike, expiry, quantity, tradePrice, commission, assetCategory
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                strike, expiry, quantity, tradePrice, commission, assetCategory, timestamp
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (optionId) DO NOTHING
             RETURNING *;
         """
@@ -162,8 +164,8 @@ def insert_trades(trades, email):
         conflict_insert_query = """
             INSERT INTO trade_conflicts (
                 user_id, optionId, tradeDate, accountId, symbol, putCall, buySell, openCloseIndicator, 
-                strike, expiry, quantity, tradePrice, commission, assetCategory
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                strike, expiry, quantity, tradePrice, commission, assetCategory, timestamp
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """
 
         supabase_conn = get_db_connection()
@@ -185,6 +187,7 @@ def insert_trades(trades, email):
                 float(trade['tradePrice']) if trade['tradePrice'] else 0,
                 float(trade['commission']) if trade['commission'] else 0,
                 trade['assetCategory'],
+                trade['timestamp']
             )
 
             cursor.execute(insert_query, trade_tuple)
