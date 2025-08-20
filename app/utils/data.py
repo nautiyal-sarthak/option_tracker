@@ -28,7 +28,8 @@ def transform_data(df):
     # make the openCloseIndicator more readable
     df['openCloseIndicator'] = df['openCloseIndicator'].map({
         'O': 'Open',
-        'C': 'Close'
+        'C': 'Close',
+        'C;O': 'Open'
     })
 
     # make the putCall more readable
