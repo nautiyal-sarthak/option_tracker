@@ -102,17 +102,28 @@ class IBKRBroker(BaseBroker):
                                                 option_id = trade_ele.attrib["tradeID"]
                                             
                                             if (datetime.strptime(trade_ele.attrib["tradeDate"],"%Y%m%d") >= datetime.combine(max_date, datetime.min.time())):
+                                                
+                                                if float(trade_ele.attrib["ibCommission"]) > 0:
+                                                    ibCommission = float(trade_ele.attrib["ibCommission"]) * -1
+                                                else:
+                                                    ibCommission = float(trade_ele.attrib["ibCommission"])
+
+                                                if trade_ele.attrib["openCloseIndicator"] == 'C;O':
+                                                    openCloseIndicator = 'O'
+                                                else:
+                                                    openCloseIndicator = trade_ele.attrib["openCloseIndicator"]
+                                                
                                                 obj = Trade(
                                                         option_id,trade_ele.attrib["tradeDate"], 
                                                         trade_ele.attrib["accountId"], 
                                                         stock, trade_ele.attrib["putCall"], 
                                                         trade_ele.attrib["buySell"],
-                                                        trade_ele.attrib["openCloseIndicator"], 
+                                                        openCloseIndicator, 
                                                         trade_ele.attrib["strike"], 
                                                         trade_ele.attrib["expiry"], 
                                                         trade_ele.attrib["quantity"], 
                                                         trade_ele.attrib["tradePrice"], 
-                                                        trade_ele.attrib["ibCommission"],  
+                                                        ibCommission,  
                                                         trade_ele.attrib["assetCategory"],
                                                         datetime.strptime(trade_ele.attrib["dateTime"], "%Y%m%d;%H%M%S")
                                                     )
@@ -121,6 +132,16 @@ class IBKRBroker(BaseBroker):
                                         if (trade_ele.tag == "Order" and trade_ele.attrib["closePrice"] != "0" 
                                             and trade_ele.attrib["openCloseIndicator"] == "C" and trade_ele.attrib["tradePrice"] == "0" and trade_ele.attrib["underlyingSymbol"] == 'XSP') :
 
+ 
+                                            if float(trade_ele.attrib["ibCommission"]) > 0:
+                                                ibCommission = float(trade_ele.attrib["ibCommission"]) * -1
+                                            else:
+                                                ibCommission = float(trade_ele.attrib["ibCommission"])
+
+                                            if trade_ele.attrib["openCloseIndicator"] == 'C;O':
+                                                openCloseIndicator = 'O'
+                                            else:
+                                                openCloseIndicator = trade_ele.attrib["openCloseIndicator"]
 
                                             obj = Trade(
                                                         str(trade_ele.attrib["tradeDate"]) + str(trade_ele.attrib["underlyingSymbol"]) + str(trade_ele.attrib["quantity"]),
@@ -129,12 +150,12 @@ class IBKRBroker(BaseBroker):
                                                         trade_ele.attrib["underlyingSymbol"], 
                                                         trade_ele.attrib["putCall"], 
                                                         trade_ele.attrib["buySell"],
-                                                        trade_ele.attrib["openCloseIndicator"], 
+                                                        openCloseIndicator, 
                                                         trade_ele.attrib["strike"], 
                                                         trade_ele.attrib["expiry"], 
                                                         trade_ele.attrib["quantity"], 
                                                         trade_ele.attrib["closePrice"], 
-                                                        trade_ele.attrib["ibCommission"],  
+                                                        ibCommission,  
                                                         trade_ele.attrib["assetCategory"],
                                                         datetime.strptime(trade_ele.attrib["dateTime"], "%Y%m%d;%H%M%S")
                                                     )

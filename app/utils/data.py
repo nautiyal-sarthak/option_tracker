@@ -57,12 +57,6 @@ def transform_data(df):
     # assert that buySell col only has BUY or SELL
     assert df['buySell'].isin(['BUY', 'SELL']).all()
 
-
-    # if the assetCatagory is option then multiply the trade price by 100
-    df['total_premium'] = df.apply(lambda x: x['tradePrice']*100*x['quantity'] if x['assetCategory'] == 'Option' else x['tradePrice']* x['quantity'], axis=1)
-    df['total_premium'] = (df['total_premium'] - df['commission']) * -1
-    df['total_premium'] = df['total_premium'].apply(lambda x: round(x, 2))
-
     # for trade date get only the date part
     df['tradeDate'] = df['tradeDate'].dt.date
     df['expiry'] = df['expiry'].dt.date
@@ -94,6 +88,8 @@ def find_matching_key(trade_open_key, trade_close_dict):
                 and trade_open_key[1] == close_key[1] # Check putCall
                 and trade_open_key[2] == close_key[2] # Check strike price
                 and trade_open_key[3] == close_key[3] # Check expiry date
+                and trade_open_key[4] == close_key[4] # Check accountId
+                and trade_open_key[6] != close_key[6] # Check buySell is different
                 and close_key[5] >= trade_open_key[5] # validate that the close date is greater than the open date
                 and close_key[5] <= trade_open_key[3] # validate that the close trades are before the expiry date
                 ):
@@ -105,15 +101,25 @@ def process_wheel_trades(df):
     try:
         df = df.copy()
         import datetime
-        #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,7,29)) & (df['strike'] == 636)]
-        #df = df[(df['symbol'] == 'HIMS')]
+        #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,8,18)) & (df['strike'] == 643)]
+        #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,8,22)) & (df['strike'] == 85.0)]
 
         df = df.fillna("")
+
+        df['total_premium'] = np.where(
+            df['assetCategory'] == 'Option',
+            (df['tradePrice'] * df['quantity'] * 100) ,
+            (df['tradePrice'] * df['quantity']) 
+        )
+
+        df['total_premium'] = (df['total_premium'].astype(float) * -1) + df['commission']
+
+
         df = df.groupby(['symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradeDate','assetCategory','expiry']).agg(
             quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
             commission=pd.NamedAgg(column='commission', aggfunc='sum'),
-            total_premium=pd.NamedAgg(column='total_premium', aggfunc='sum'),
-            tradePrice=pd.NamedAgg(column='tradePrice', aggfunc='mean')
+            tradePrice=pd.NamedAgg(column='tradePrice', aggfunc='mean'),
+            total_premium=pd.NamedAgg(column='total_premium', aggfunc='sum')
         ).reset_index()
 
         df["asset_priority"] = df["putCall"].apply(lambda x: 1 if x in ["Call", "Put"] else 2)
