@@ -493,7 +493,7 @@ def format_processed_data(df):
     df['qty'] = np.where(df['callorPut'] == 0, np.where(df['sold_quantity'] != 0, df['sold_quantity'], df['assign_quantity']), df['number_of_contracts_sold'])
 
 
-    df = df[['key','type','qty','ROI','status','trade_open_date','month_week','amt']]
+    df = df[['key','type','qty','ROI','status','trade_open_date','month_week','amt','Colateral_used']]
 
     # # if status is open set the trade_open_date to ''
     df.loc[df['status'] == 'OPEN', 'month_week'] = ''
