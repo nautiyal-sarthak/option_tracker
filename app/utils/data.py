@@ -102,7 +102,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,8,18)) & (df['strike'] == 643)]
-        #df = df[(df['symbol'] == 'HOOD') & (df['expiry'] == datetime.date(2025,8,22)) & (df['strike'] == 85.0)]
+        #df = df[(df['symbol'] == 'AAL')]
 
         df = df.fillna("")
 
@@ -113,7 +113,6 @@ def process_wheel_trades(df):
         )
 
         df['total_premium'] = (df['total_premium'].astype(float) * -1) + df['commission']
-
 
         df = df.groupby(['symbol','putCall','buySell','openCloseIndicator','strike','accountId','tradeDate','assetCategory','expiry']).agg(
             quantity=pd.NamedAgg(column='quantity', aggfunc='sum'),
@@ -357,11 +356,21 @@ def process_wheel_trades(df):
         df['net_premium'] = pd.to_numeric(df['net_premium'], errors='coerce').fillna(0.0).astype(float)
         df['net_premium'] = df['net_premium'].apply(lambda x: round(x, 2))
         df['ROI'] = df['ROI'].apply(lambda x: round(x, 2))
+        
+        df['Colateral_used'] = np.where(
+            df['status'].isin(['OPEN', 'ASSIGNED']),
+            np.where(
+                df['close_date'] != 0,
+                df['assign_price_per_share'] * df['assign_quantity'],
+                df['number_of_contracts_sold'] * 100 * df['strike_price'] * -1  # adjust if needed
+            ),
+            0
+        )
 
         df = df[['accountId','symbol', 'callorPut', 'buySell', 'trade_open_date', 'expiry_date','strike_price', 
                    'number_of_contracts_sold', 'premium_collected','net_buyback_price', 'number_of_buyback', 'buyback_date', 'net_premium',
                    'assign_price_per_share', 'assign_quantity','number_of_assign_contract', 'assign_date', 'net_assign_cost','sold_price_per_share', 
-                   'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date','ROI','status']]
+                   'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date','ROI','status','Colateral_used']]
         return df
     except Exception as e:
         logging.error(f"Error processing wheel trades: {e}")
@@ -403,6 +412,7 @@ def process_trade_data(email,token=None,broker_name=None,start_date=None,end_dat
             total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
             total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
+            total_colateral_used=pd.NamedAgg(column='Colateral_used', aggfunc='sum')
         ).reset_index()
 
         stk_cost_per_share['cost_basis_per_share'] = (
@@ -453,6 +463,7 @@ def process_trade_data(email,token=None,broker_name=None,start_date=None,end_dat
             "total_premium_formated": str(total_summary['total_premium_collected'].values[0]) + f"({total_summary['total_premium_collected_open'].values[0]})",
             'total_open_trades': total_summary['total_open_trades'].values[0],
             'total_profit': total_summary['net_profit'].values[0],
+            'total_colateral_used': total_summary['colateral_used'].values[0],
             'p_l_stock': total_summary['realized_pnl'].values[0],
             'total_wins': total_summary['total_wins'].values[0],
             'total_loss': total_summary['total_lost_trades'].values[0],
@@ -609,7 +620,8 @@ def getStockSummary(df, stk_cost_per_share):
             total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
             total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
             avg_ROI=pd.NamedAgg(column='ROI', aggfunc=lambda x: x[df['status'] != 'OPEN'].mean()),
-            min_date=pd.NamedAgg(column='trade_open_date', aggfunc='min')
+            min_date=pd.NamedAgg(column='trade_open_date', aggfunc='min'),
+            colateral_used=pd.NamedAgg(column='Colateral_used', aggfunc='sum')
         ).reset_index()
 
         # Merge with stock cost per share

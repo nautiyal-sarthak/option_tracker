@@ -63,6 +63,10 @@
                 <h2>Total Open Trades</h2>
                 <p id="total-open-trades">{{ total_open_trades }}</p>
             </div>
+            <div class="section">
+                <h2>Colateral Used</h2>
+                <p id="total_colateral_used">{{ total_colateral_used }}</p>
+            </div>
         </div>
 
         <!-- Profit Chart -->
@@ -106,9 +110,9 @@
                         <span class="{{ 'profit' if account.win_percent >= 0 else 'loss' }}">
                             ({{ account.total_wins }} / {{ account.total_lost_trades }})
                         </span>
-                        <span>| ROI:</span>
-                        <span class="{{ 'profit' if account.avg_ROI >= 0 else 'loss' }}">
-                            {{ account.avg_ROI }}
+                        <span>| Colateral Used:</span>
+                        <span>
+                            {{ account.colateral_used }}
                         </span>
                         <span>| Open trades:</span>
                         <span>{{ account.total_open_trades }}</span>
@@ -143,12 +147,13 @@
                                     <strong>{{ stock.symbol }}</strong>
                                 </a>
                                 <div class="stock-details">
-                                    <span>Premium : <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }} ({{stock.total_premium_collected_open}})</span></span>
                                     <span>total profit: <span class="{{ 'profit' if stock.net_profit >= 0 else 'loss' }}">{{stock.net_profit}}</span></span>
+                                    <span>Premium : <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }} ({{stock.total_premium_collected_open}})</span></span>
                                     <span>stock sale P/L: <span class="{{ 'profit' if stock.realized_pnl >= 0 else 'loss' }}">{{stock.realized_pnl}}</span></span>
                                     <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_lost_trades }}</span> ({{ stock.win_percent }}%)</span>
                                     <span>Stocks Qty: {{ stock.net_assign_qty }}</span>
                                     <span>Cost Bases: {{ stock.cost_basis_per_share }}</span>
+                                    <span>Colateral Used: {{ stock.colateral_used }}</span>
                                     <span>Open trades: {{ stock.total_open_trades }}</span>
                                     <span>ROI: {{ stock.avg_ROI }} %</span>
                                 </div>
@@ -314,6 +319,7 @@ function getData(startDate, endDate, grouping = 'month') {
             document.getElementById('total-premium').innerHTML = data.total_premium_formated.toLocaleString();
             document.getElementById('total-premium').className = data.total_premium_collected >= 0 ? 'profit' : 'loss';
             document.getElementById('total-profit').innerHTML = data.total_profit.toLocaleString();
+            document.getElementById('total_colateral_used').innerHTML = data.total_colateral_used.toLocaleString();
             document.getElementById('total-profit').className = data.total_profit >= 0 ? 'profit' : 'loss';
             document.getElementById('pl-stock').innerHTML = data.p_l_stock.toLocaleString();
             document.getElementById('pl-stock').className = data.p_l_stock >= 0 ? 'profit' : 'loss';
@@ -354,6 +360,10 @@ function getData(startDate, endDate, grouping = 'month') {
                             <span class="${account.win_percent >= 0 ? 'profit' : 'loss'}">
                                 (${account.total_wins} / ${account.total_lost_trades})
                             </span>
+                            <span>| Colateral Used:</span>
+                            <span>
+                                ${account.colateral_used.toLocaleString()}
+                            </span>
                             <span>| Open trades:</span>
                             <span>${account.total_open_trades}</span>
                         </div>
@@ -386,11 +396,14 @@ function getData(startDate, endDate, grouping = 'month') {
                                             <strong>${stock.symbol}</strong>
                                         </a>
                                         <div class="stock-details">
-                                            <span>Premium : <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
                                             <span>total profit: <span class="${stock.net_profit >= 0 ? 'profit' : 'loss'}">${stock.net_profit.toLocaleString()}</span></span>
+                                            <span>Premium : <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
+                                            
                                             <span>stock sale P/L: <span class="${stock.realized_pnl >= 0 ? 'profit' : 'loss'}">${stock.realized_pnl.toLocaleString()}</span></span>
                                             <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_lost_trades}</span> (${stock.win_percent !== null ? stock.win_percent.toFixed(2) : 'N/A'}%)</span>
                                             <span>Stocks Qty: ${stock.net_assign_qty}</span>
+                                            <span>Cost Bases: ${stock.cost_basis_per_share}</span>
+                                            <span>Colateral Used: ${stock.colateral_used}</span>
                                             <span>Open trades: ${stock.total_open_trades}</span>
                                             <span>ROI: ${stock.avg_ROI} %</span>
                                         </div>
