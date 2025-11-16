@@ -102,7 +102,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,8,18)) & (df['strike'] == 643)]
-        #df = df[(df['symbol'] == 'AAL')]
+        #df = df[(df['symbol'] == 'QQQ')]
 
         df = df.fillna("")
 
@@ -362,7 +362,12 @@ def process_wheel_trades(df):
             np.where(
                 df['close_date'] != 0,
                 df['assign_price_per_share'] * df['assign_quantity'],
-                df['number_of_contracts_sold'] * 100 * df['strike_price'] * -1  # adjust if needed
+                np.where(
+                    df['buySell'] == 'SELL',
+                    df['number_of_contracts_sold'] * 100 * df['strike_price'] * -1  ,# adjust if needed,
+                    0
+                )
+                
             ),
             0
         )
