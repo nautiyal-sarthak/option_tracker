@@ -140,7 +140,6 @@
                                     <select id="filter-options" onchange="filterStocks(this)">
                                         <option value="all">All</option>
                                         <option value="open">Open</option>
-                                        <option value="closed">Closed</option>
                                     </select>
                                 </div>
                             </div>                
@@ -392,7 +391,6 @@ function getData(startDate, endDate, grouping = 'month') {
                                         <select id="filter-options" onchange="filterStocks(this)">
                                             <option value="all">All</option>
                                             <option value="open">Open</option>
-                                            <option value="closed">Closed</option>
                                         </select>
                                     </div>
                                 </div>   
@@ -514,7 +512,6 @@ function getData(startDate, endDate, grouping = 'month') {
                                     <select id="filter-options" onchange="filterStocks(this)">
                                         <option value="all">All</option>
                                         <option value="open">Open</option>
-                                        <option value="closed">Closed</option>
                                     </select>
                                 </div>
                             </div>  
@@ -533,7 +530,7 @@ function filterStocks(selectElement) {
 
     stockCards.forEach(card => {
         // Get the Open Trades value directly from the stock details section
-        const openTrades = parseInt(card.querySelector('.stock-details span:nth-child(7)').textContent.split(': ')[1]);
+        const openTrades = parseInt(card.querySelector('.stock-details span:nth-child(8)').textContent.split(': ')[1]);
 
         if (filterBy === "all") {
             card.style.display = "block"; // Show all stocks
