@@ -63,6 +63,10 @@
                 <h2>Total Open Trades</h2>
                 <p id="total-open-trades">{{ total_open_trades }}</p>
             </div>
+            <div class="section">
+                <h2>Colateral Used</h2>
+                <p id="total_colateral_used">{{ total_colateral_used }}</p>
+            </div>
         </div>
 
         <!-- Profit Chart -->
@@ -106,9 +110,9 @@
                         <span class="{{ 'profit' if account.win_percent >= 0 else 'loss' }}">
                             ({{ account.total_wins }} / {{ account.total_lost_trades }})
                         </span>
-                        <span>| ROI:</span>
-                        <span class="{{ 'profit' if account.avg_ROI >= 0 else 'loss' }}">
-                            {{ account.avg_ROI }}
+                        <span>| Colateral Used:</span>
+                        <span>
+                            {{ account.colateral_used }}
                         </span>
                         <span>| Open trades:</span>
                         <span>{{ account.total_open_trades }}</span>
@@ -122,9 +126,12 @@
                                 <div class="filter-container">
                                     <label for="sort-options">Sort by:</label>
                                     <select id="sort-options" onchange="sortStocks(this)">
-                                        <option value="premium">Premium</option>
-                                        <option value="invest">Invest %</option>
                                         <option value="alphabetical">Alphabetical (A-Z)</option>
+                                        <option value="total_profit">Total Profit</option>
+                                        <option value="premium">Premium</option>
+                                        <option value="stk_sale">Stock sale</option>
+                                        <option value="colateral">Colateral Used</option>
+                                        <option value="Open">Open trades</option>
                                         <option value="win_percentage">Win %</option>
                                     </select>
                                 </div>
@@ -133,7 +140,6 @@
                                     <select id="filter-options" onchange="filterStocks(this)">
                                         <option value="all">All</option>
                                         <option value="open">Open</option>
-                                        <option value="closed">Closed</option>
                                     </select>
                                 </div>
                             </div>                
@@ -143,14 +149,15 @@
                                     <strong>{{ stock.symbol }}</strong>
                                 </a>
                                 <div class="stock-details">
-                                    <span>Premium : <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }} ({{stock.total_premium_collected_open}})</span></span>
                                     <span>total profit: <span class="{{ 'profit' if stock.net_profit >= 0 else 'loss' }}">{{stock.net_profit}}</span></span>
+                                    <span>Premium : <span class="{{ 'profit' if stock.total_premium_collected >= 0 else 'loss' }}">{{ stock.total_premium_collected }} ({{stock.total_premium_collected_open}})</span></span>
                                     <span>stock sale P/L: <span class="{{ 'profit' if stock.realized_pnl >= 0 else 'loss' }}">{{stock.realized_pnl}}</span></span>
                                     <span>Win/Loss: <span class="{{ 'profit'}}">{{ stock.total_wins }}</span>/<span class="{{ 'loss'}}">{{ stock.total_lost_trades }}</span> ({{ stock.win_percent }}%)</span>
-                                    <span>Stocks Qty: {{ stock.net_assign_qty }}</span>
-                                    <span>Cost Bases: {{ stock.cost_basis_per_share }}</span>
-                                    <span>Open trades: {{ stock.total_open_trades }}</span>
-                                    <span>ROI: {{ stock.avg_ROI }} %</span>
+                                    <span>Stocks Qty: <span>{{ stock.net_assign_qty }}</span></span>
+                                    <span>Cost Bases: <span>{{ stock.cost_basis_per_share }}</span></span>
+                                    <span>Colateral Used: <span>{{ stock.colateral_used }}</span></span>
+                                    <span>Open trades: <span>{{ stock.total_open_trades }}</span></span>
+                                    <span>ROI: <span>{{ stock.avg_ROI }}</span> %</span>
                                 </div>
                             </div>
                             {% endfor %}
@@ -314,6 +321,7 @@ function getData(startDate, endDate, grouping = 'month') {
             document.getElementById('total-premium').innerHTML = data.total_premium_formated.toLocaleString();
             document.getElementById('total-premium').className = data.total_premium_collected >= 0 ? 'profit' : 'loss';
             document.getElementById('total-profit').innerHTML = data.total_profit.toLocaleString();
+            document.getElementById('total_colateral_used').innerHTML = data.total_colateral_used.toLocaleString();
             document.getElementById('total-profit').className = data.total_profit >= 0 ? 'profit' : 'loss';
             document.getElementById('pl-stock').innerHTML = data.p_l_stock.toLocaleString();
             document.getElementById('pl-stock').className = data.p_l_stock >= 0 ? 'profit' : 'loss';
@@ -354,6 +362,10 @@ function getData(startDate, endDate, grouping = 'month') {
                             <span class="${account.win_percent >= 0 ? 'profit' : 'loss'}">
                                 (${account.total_wins} / ${account.total_lost_trades})
                             </span>
+                            <span>| Colateral Used:</span>
+                            <span>
+                                ${account.colateral_used.toLocaleString()}
+                            </span>
                             <span>| Open trades:</span>
                             <span>${account.total_open_trades}</span>
                         </div>
@@ -365,9 +377,12 @@ function getData(startDate, endDate, grouping = 'month') {
                                     <div class="filter-container">
                                         <label for="sort-options">Sort by:</label>
                                         <select id="sort-options" onchange="sortStocks(this)">
-                                            <option value="premium">Premium</option>
-                                            <option value="invest">Invest %</option>
                                             <option value="alphabetical">Alphabetical (A-Z)</option>
+                                            <option value="total_profit">Total Profit</option>
+                                            <option value="premium">Premium</option>
+                                            <option value="stk_sale">Stock sale</option>
+                                            <option value="colateral">Colateral Used</option>
+                                            <option value="Open">Open trades</option>
                                             <option value="win_percentage">Win %</option>
                                         </select>
                                     </div>
@@ -376,7 +391,6 @@ function getData(startDate, endDate, grouping = 'month') {
                                         <select id="filter-options" onchange="filterStocks(this)">
                                             <option value="all">All</option>
                                             <option value="open">Open</option>
-                                            <option value="closed">Closed</option>
                                         </select>
                                     </div>
                                 </div>   
@@ -386,13 +400,16 @@ function getData(startDate, endDate, grouping = 'month') {
                                             <strong>${stock.symbol}</strong>
                                         </a>
                                         <div class="stock-details">
-                                            <span>Premium : <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
                                             <span>total profit: <span class="${stock.net_profit >= 0 ? 'profit' : 'loss'}">${stock.net_profit.toLocaleString()}</span></span>
+                                            <span>Premium : <span class="${stock.total_premium_collected >= 0 ? 'profit' : 'loss'}">${stock.total_premium_collected.toLocaleString()} (${stock.total_premium_collected_open.toLocaleString()})</span></span>
+                                            
                                             <span>stock sale P/L: <span class="${stock.realized_pnl >= 0 ? 'profit' : 'loss'}">${stock.realized_pnl.toLocaleString()}</span></span>
                                             <span>Win/Loss: <span class="profit">${stock.total_wins}</span>/<span class="loss">${stock.total_lost_trades}</span> (${stock.win_percent !== null ? stock.win_percent.toFixed(2) : 'N/A'}%)</span>
-                                            <span>Stocks Qty: ${stock.net_assign_qty}</span>
-                                            <span>Open trades: ${stock.total_open_trades}</span>
-                                            <span>ROI: ${stock.avg_ROI} %</span>
+                                            <span>Stocks Qty: <span>${stock.net_assign_qty}</span></span>
+                                            <span>Cost Bases: <span>${stock.cost_basis_per_share}</span></span>
+                                            <span>Colateral Used: <span>${stock.colateral_used}</span></span>
+                                            <span>Open trades: <span>${stock.total_open_trades}</span></span>
+                                            <span>ROI: <span>${stock.avg_ROI}</span> %</span>
                                         </div>
                                     </div>
                                 `).join('')}
@@ -452,15 +469,24 @@ function getData(startDate, endDate, grouping = 'month') {
             return a.querySelector('.stock-symbol strong').textContent.localeCompare(
                 b.querySelector('.stock-symbol strong').textContent
             );
-        } else if (sortBy === "premium") {
+        } else if (sortBy === "total_profit") {
             valA = parseFloat(a.querySelector('.stock-details span:nth-child(1) span').textContent) || 0;
             valB = parseFloat(b.querySelector('.stock-details span:nth-child(1) span').textContent) || 0;
-        } else if (sortBy === "invest") {
-            valA = parseFloat(a.querySelector('.stock-details span:last-child').textContent) || 0;
-            valB = parseFloat(b.querySelector('.stock-details span:last-child').textContent) || 0;
+        } else if (sortBy === "premium") {
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(2) span').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(2) span').textContent) || 0;
+        } else if (sortBy === "stk_sale") {
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(3) span').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(3) span').textContent) || 0;
+        } else if (sortBy === "colateral") {
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(7) span').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(7) span').textContent) || 0;
         } else if (sortBy === "win_percentage") {  // Sorting by w_L
-            valA = parseFloat(a.querySelector('.stock-details span:nth-child(4)').textContent.match(/([\d.]+)/)?.[0]) || 0;
-            valB = parseFloat(b.querySelector('.stock-details span:nth-child(4)').textContent.match(/([\d.]+)/)?.[0]) || 0;
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(4)').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(4)').textContent) || 0;
+        } else if (sortBy === "Open") {  // Sorting by w_L
+            valA = parseFloat(a.querySelector('.stock-details span:nth-child(8)').textContent) || 0;
+            valB = parseFloat(b.querySelector('.stock-details span:nth-child(8)').textContent) || 0;
         }
 
         return valB - valA; // Descending order
@@ -472,10 +498,13 @@ function getData(startDate, endDate, grouping = 'month') {
                                 <div class="filter-container">
                                     <label for="sort-options">Sort by:</label>
                                     <select id="sort-options" onchange="sortStocks(this)">
-                                        <option value="premium">Premium</option>
-                                        <option value="invest">Invest %</option>
-                                        <option value="alphabetical">Alphabetical (A-Z)</option>
-                                        <option value="win_percentage">Win %</option>
+                                            <option value="alphabetical">Alphabetical (A-Z)</option>
+                                            <option value="total_profit">Total Profit</option>
+                                            <option value="premium">Premium</option>
+                                            <option value="stk_sale">Stock sale</option>
+                                            <option value="colateral">Colateral Used</option>
+                                            <option value="Open">Open trades</option>
+                                            <option value="win_percentage">Win %</option>
                                     </select>
                                 </div>
                                 <div class="filter-container">
@@ -483,7 +512,6 @@ function getData(startDate, endDate, grouping = 'month') {
                                     <select id="filter-options" onchange="filterStocks(this)">
                                         <option value="all">All</option>
                                         <option value="open">Open</option>
-                                        <option value="closed">Closed</option>
                                     </select>
                                 </div>
                             </div>  
@@ -502,7 +530,7 @@ function filterStocks(selectElement) {
 
     stockCards.forEach(card => {
         // Get the Open Trades value directly from the stock details section
-        const openTrades = parseInt(card.querySelector('.stock-details span:nth-child(7)').textContent.split(': ')[1]);
+        const openTrades = parseInt(card.querySelector('.stock-details span:nth-child(8)').textContent.split(': ')[1]);
 
         if (filterBy === "all") {
             card.style.display = "block"; // Show all stocks

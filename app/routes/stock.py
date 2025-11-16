@@ -46,6 +46,7 @@ def stock_details_inner(account_id, symbol):
 
     stock_data_open = stock_data_formated[(stock_data_formated["Status"] == 'OPEN')]
     stock_data_close = stock_data_formated[(stock_data_formated["Status"] != 'OPEN')]
+    stock_data_close = stock_data_close.drop(columns=['Colateral_used'])
 
     stock_data_open.drop(columns=['ROI', 'Status', 'Close week'], inplace=True)
     stock_data_open.rename(columns={'Net Profit': 'Unrealised Profit'}, inplace=True)
@@ -109,7 +110,7 @@ def stock_details_inner(account_id, symbol):
 
 
 def format_stock_data(df):
-    df = df[['trade_open_date','assign_price_per_share','sold_price_per_share','assign_quantity','sold_quantity','status']]
+    df = df[['trade_open_date','assign_price_per_share','sold_price_per_share','assign_quantity','sold_quantity','status','Colateral_used']]
     df['Price'] = np.where(df['assign_price_per_share'] == 0, df['sold_price_per_share'] , df['assign_price_per_share'])
     df['Quantity'] = np.where(df['assign_quantity'] == 0, df['sold_quantity'] , df['assign_quantity'])
     
@@ -117,7 +118,7 @@ def format_stock_data(df):
         'trade_open_date': 'Date'
     }, inplace=True)
 
-    return df[['Date','status','Price','Quantity']]
+    return df[['Date','status','Price','Quantity','Colateral_used']]
 
 def getTotalSummary(df):
     try:
