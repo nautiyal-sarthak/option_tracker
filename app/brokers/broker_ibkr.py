@@ -26,7 +26,13 @@ class IBKRBroker(BaseBroker):
         try:
             current_app.logger.info('sending request to IBKR')
             token = self.token
+            
+            #hacky code to enable kirans report
+            if token == '352216302025058435775095':
+                self.query_id = '1337586'
+
             queryId = self.query_id
+
             flex_version = self.flex_version
 
             send_path = "/SendRequest"
