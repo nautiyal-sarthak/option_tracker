@@ -102,7 +102,7 @@ def process_wheel_trades(df):
         df = df.copy()
         import datetime
         #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,8,18)) & (df['strike'] == 643)]
-        #df = df[(df['symbol'] == 'QQQ')]
+        #df = df[(df['symbol'] == 'SOFI')]
 
         df = df.fillna("")
 
@@ -365,7 +365,7 @@ def process_wheel_trades(df):
                 np.where(
                     df['buySell'] == 'SELL',
                     df['number_of_contracts_sold'] * 100 * df['strike_price'] * -1  ,# adjust if needed,
-                    0
+                    df['net_premium'] * -1
                 )
                 
             ),
@@ -402,42 +402,57 @@ def process_trade_data(email,token=None,broker_name=None,start_date=None,end_dat
             df = pd.DataFrame([vars(trade) for trade in trade_data])
             current_app.logger.info('transforming data')
             raw_df = transform_data(df)
-            current_app.logger.info('processing wheel trades')
-            processed_data = process_wheel_trades(raw_df)
-            session['master_trade_data'] = processed_data
+            # current_app.logger.info('processing wheel trades')
+            # processed_data = process_wheel_trades(raw_df)
+            # session['master_trade_data'] = processed_data
             session['raw_df'] = raw_df
         else:
-            current_app.logger.info('using data from session')
-            processed_data = session['master_trade_data']
+            # current_app.logger.info('using data from session')
+            # processed_data = session['master_trade_data']
             raw_df = session['raw_df']
 
-        stk_cost_per_share = processed_data.groupby(['accountId', 'symbol']).agg(
-            total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[processed_data['status'] != 'OPEN'].sum()),
-            total_premium_collected_open = pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[(processed_data['status'] == 'OPEN') & (processed_data['buySell'] == 'SELL')].sum()),
-            total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
-            total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum'),
-            total_sold_quantity=pd.NamedAgg(column='sold_quantity', aggfunc='sum'),
-            total_colateral_used=pd.NamedAgg(column='Colateral_used', aggfunc='sum')
-        ).reset_index()
-
-        stk_cost_per_share['cost_basis_per_share'] = (
-                                    (abs(stk_cost_per_share["total_stock_assign_cost"]) - 
-                                    (stk_cost_per_share.get("total_premium_collected", 0.0) + stk_cost_per_share.get("total_premium_collected_open", 0.0)))
-                                    /stk_cost_per_share["total_assign_quantity"])
         
-        stk_cost_per_share = stk_cost_per_share[['accountId', 'symbol', 'cost_basis_per_share']].copy()
-        stk_cost_per_share = stk_cost_per_share.fillna(0.0)
-        session['stk_cost_per_share'] = stk_cost_per_share
+        if (start_date is not None) and (end_date is not None):
+            current_app.logger.info(f'Applying date filter: {start_date} to {end_date}')
+            raw_df = raw_df[(raw_df['tradeDate'] >= pd.to_datetime(start_date).date()) & (raw_df['tradeDate'] <= pd.to_datetime(end_date).date())]
+
+        
+        current_app.logger.info('processing wheel trades')
+        processed_data = process_wheel_trades(raw_df)
+        
+
+        if (session.get('master_trade_data') is None) :
+            stk_cost_per_share = processed_data.groupby(['accountId', 'symbol']).agg(
+                total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[processed_data['status'] != 'OPEN'].sum()),
+                total_premium_collected_open = pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[(processed_data['status'] == 'OPEN') & (processed_data['buySell'] == 'SELL')].sum()),
+                total_stock_assign_cost=pd.NamedAgg(column='net_assign_cost', aggfunc='sum'),
+                total_assign_quantity=pd.NamedAgg(column='assign_quantity', aggfunc='sum')
+            ).reset_index()
+
+            #remove rows where total_assign_quantity is 0
+            stk_cost_per_share = stk_cost_per_share[stk_cost_per_share['total_assign_quantity'] != 0]
+
+            stk_cost_per_share['cost_basis_per_share'] = (
+                                        (abs(stk_cost_per_share["total_stock_assign_cost"]) - 
+                                        (stk_cost_per_share.get("total_premium_collected", 0.0) + stk_cost_per_share.get("total_premium_collected_open", 0.0)))
+                                        /stk_cost_per_share["total_assign_quantity"])
+            
+            stk_cost_per_share = stk_cost_per_share[['accountId', 'symbol', 'cost_basis_per_share']].copy()
+            stk_cost_per_share = stk_cost_per_share.fillna(0.0)
+            session['stk_cost_per_share'] = stk_cost_per_share
+
+        session['master_trade_data'] = processed_data
+        stk_cost_per_share = session['stk_cost_per_share']
 
         # Apply time filter
-        filtered_data = filter_by_time_period(processed_data, start_date, end_date)
+        #filtered_data = filter_by_time_period(processed_data, start_date, end_date)
         #raw_df = filter_by_time_period(raw_df, filter_type,"tradeDate")
 
-        stock_summary = getStockSummary(filtered_data,stk_cost_per_share)
+        stock_summary = getStockSummary(processed_data,stk_cost_per_share)
         session['stock_summary'] = stock_summary
         account_summary = getAccountSummary(stock_summary)
         total_summary = getTotalSummary(account_summary)
-        profit_by_month = getProfitPerTimePeriod(filtered_data,stock_summary,grouping)
+        profit_by_month = getProfitPerTimePeriod(processed_data,stock_summary,grouping)
 
 
         # Prepare account-stock dictionary
@@ -477,7 +492,7 @@ def process_trade_data(email,token=None,broker_name=None,start_date=None,end_dat
             'account_summary': account_summary.to_dict(orient='records'),
             'account_stk_merge': dict(account_dict),
             'profit_data': profit_by_month.to_dict(orient='records'),
-            'all_trades': format_processed_data(filtered_data).to_dict(orient='records')
+            'all_trades': format_processed_data(processed_data).to_dict(orient='records')
         }
 
         # # Convert all NumPy types to Python native types
@@ -613,7 +628,7 @@ def getStockSummary(df, stk_cost_per_share):
         # # Stock level aggregation
         stock_summary = df.groupby(['accountId', 'symbol']).agg(
             total_premium_collected=pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[df['status'] != 'OPEN'].sum()),
-            total_premium_collected_open = pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[(df['status'] == 'OPEN') & (df['buySell'] == 'SELL')].sum()),
+            total_premium_collected_open = pd.NamedAgg(column='net_premium', aggfunc=lambda x: x[(df['status'] == 'OPEN')].sum()),
             total_trades=pd.NamedAgg(column='symbol', aggfunc=lambda x: x[(df['callorPut'].isin(["Call", "Put"]))].count()),
             total_wins = pd.NamedAgg(
                             column='symbol',
