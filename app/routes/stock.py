@@ -13,7 +13,7 @@ bp = Blueprint('stock', __name__)
 def stock_details_inner(account_id, symbol):
     current_app.logger.info(f'Fetching stock details for {symbol}')
     
-    if session.get('master_trade_data') is None:
+    if session.get('raw_df') is None:
         return "Stock data is not available yet. Please try again later."
 
     # Read from query params
@@ -30,18 +30,24 @@ def stock_details_inner(account_id, symbol):
     oldest_trade_date = session['oldest_trade_date']
 
 
-    global_trade_info = session['master_trade_data']
+    raw_df = session['raw_df']
+    raw_df = raw_df[(raw_df['tradeDate'] >= pd.to_datetime(start_date).date()) 
+                    & (raw_df['tradeDate'] <= pd.to_datetime(end_date).date())
+                    & (raw_df['symbol'] == symbol)]
+
     stk_cost_per_share = session['stk_cost_per_share']
 
-    stock_data = global_trade_info[
-        (global_trade_info['accountId'] == account_id) &
-        (global_trade_info['symbol'] == symbol)
-    ].reset_index()
+    stock_data = process_wheel_trades(raw_df)
 
-    stock_data = filter_by_time_period(stock_data, start_date, end_date)
+    stock_data = stock_data.reset_index()
+
+    
+
+
 
     # Get summary data
     processed_data_global_stk_grp = getStockSummary(stock_data, stk_cost_per_share)
+    profit_by_month = getProfitPerTimePeriod(stock_data, processed_data_global_stk_grp, grouping)
     stock_data_formated = format_processed_data(stock_data)
 
     stock_data_open = stock_data_formated[(stock_data_formated["Status"] == 'OPEN')]
@@ -88,7 +94,6 @@ def stock_details_inner(account_id, symbol):
         
     print("stk_smry:", stk_smry)
 
-    profit_by_month = getProfitPerTimePeriod(stock_data, processed_data_global_stk_grp, grouping)
 
     return render_template('stock_details.html',
                            filter_start= start_date,
