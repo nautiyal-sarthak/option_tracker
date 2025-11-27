@@ -99,17 +99,39 @@ def find_matching_key(trade_open_key, trade_close_dict):
 
 def process_wheel_trades(df):
     try:
-        df = df.copy()
         import datetime
-        #df = df[(df['symbol'] == 'XSP') & (df['expiry'] == datetime.date(2025,8,18)) & (df['strike'] == 643)]
-        #df = df[(df['symbol'] == 'QQQ')]
+        import logging
+        import numpy as np
+        import pandas as pd
 
+        # helper to match keys loosely (ignores buySell/quantity for cross-lookup)
+        def find_matching_key(original_key, lookup_dict):
+            # original_key format in processed_trades: (symbol, putCall, strike, expiry, accountId, tradeDate, buySell)
+            sym, putcall, strike, expiry, acct, tdate, buysell = original_key
+            for k in lookup_dict.keys():
+                # For stock/assignment lookups we used slightly different key shapes, so guard
+                try:
+                    k_sym, k_putcall, k_strike, k_expiry, k_acct, k_tdate, k_buysell = k
+                except Exception:
+                    continue
+                if (
+                    k_sym == sym and
+                    k_putcall == putcall and
+                    k_expiry == expiry and
+                    k_acct == acct
+                ):
+                    return k
+            return None
+
+        # --- start original preprocessing ---
+        df = df.copy()
         df = df.fillna("")
 
+        # compute total_premium similar to your original code
         df['total_premium'] = np.where(
             df['assetCategory'] == 'Option',
-            (df['tradePrice'] * df['quantity'] * 100) ,
-            (df['tradePrice'] * df['quantity']) 
+            (df['tradePrice'] * df['quantity'] * 100),
+            (df['tradePrice'] * df['quantity'])
         )
 
         df['total_premium'] = (df['total_premium'].astype(float) * -1) + df['commission']
@@ -123,165 +145,332 @@ def process_wheel_trades(df):
 
         df["asset_priority"] = df["putCall"].apply(lambda x: 1 if x in ["Call", "Put"] else 2)
         df.sort_values(by=["asset_priority", "symbol", "tradeDate"], ascending=[True, True, True], inplace=True)
-        df.drop(columns=["asset_priority"], inplace=True)  # Remove helper column
-        # Initialize processed trades list
-        processed_trades = {}
+        df.drop(columns=["asset_priority"], inplace=True)
 
-        # Track assigned stocks, stock sales, buybacks, rolls, and exercises
+        # data structures to collect trades
+        processed_trades = {}
         assigned_stocks = {}
         stock_sales = {}
         buybacks = {}
         sellbacks = {}
-        
 
-        # Iterate over trades
+        # collect option-leg opens/closings to allow detection of spreads
+        option_opens = []   # list of rows for Option Open
+        option_closes = []  # list of rows for Option Close (buybacks)
+
+        # Iterate over grouped trades, collect opens/closes and stocks as before
         for _, row in df.iterrows():
             symbol = row["symbol"]
-            
+
             if row["assetCategory"] == "Option" and row["openCloseIndicator"] == "Open":
-                # Option Sale Entry
-                key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'], row['tradeDate'],row["buySell"])
-                processed_trades[key] ={
-                    'accountId': row['accountId'],
-                    "symbol": symbol,
-                    "callorPut": row["putCall"],
-                    "buySell": row["buySell"],
-                    "trade_open_date": row["tradeDate"],
-                    "expiry_date": row["expiry"],
-                    "strike_price": row["strike"],
-                    "number_of_contracts_sold": row["quantity"],
-                    "premium_collected": row["total_premium"],
-
-                    "net_buyback_price": None,
-                    "number_of_buyback": None,
-                    "buyback_date": None,
-
-                    "net_premium": row["total_premium"],
-                    
-                    "assign_price_per_share": None,
-                    "assign_quantity": None,
-                    "number_of_assign_contract":None,
-                    "assign_date":None,
-                    "net_assign_cost": None,
-
-                    "sold_price_per_share": None,
-                    "sold_quantity": None,
-                    "number_of_sold_contract": None,
-                    "sold_date": None,
-                    "net_sold_cost":None,
-                    
-
-                    "close_date":None,
-                    "ROI": None,
-                    "status": "OPEN"
-                }
+                # capture opens for potential spread detection
+                option_opens.append(row.to_dict())
 
             elif row["assetCategory"] == "Option" and row["openCloseIndicator"] == "Close":
-                # Option Buyback (Closing trade)
-                key = (symbol, row["putCall"], row["strike"], row["expiry"], row['accountId'], row['tradeDate'], row["buySell"])
-                buybacks[key] = {
-                    "total_premium": row["total_premium"],
-                    "number_of_buyback": row["quantity"],
-                    "buyback_date": row["tradeDate"]
-                }
-        
+                # buyback/close
+                option_closes.append(row.to_dict())
+
             elif row["assetCategory"] == "Stock" and row["buySell"] == "BUY":
                 # Stock Assignment (from Put Option)
-                key = (symbol, 'Put', row["tradePrice"],row["expiry"], row['accountId'], row['tradeDate'],row["buySell"])
+                key = (symbol, 'Put', row["tradePrice"], row["expiry"], row['accountId'], row['tradeDate'], row["buySell"])
                 assigned_stocks[key] = {
-                    "assign_price": row["tradePrice"],  
+                    "assign_price": row["tradePrice"],
                     "quantity": row["quantity"],
                     "tradeDate": row["tradeDate"],
-                    "number_of_assign_contract":row["quantity"],
-                    "net_assign_cost":row["total_premium"]
+                    "number_of_assign_contract": row["quantity"],
+                    "net_assign_cost": row["total_premium"]
                 }
 
             elif row["assetCategory"] == "Stock" and row["buySell"] == "SELL":
                 # Stock Sale
-                key = (symbol, 'Call', row["tradePrice"],row["expiry"], row['accountId'], row['tradeDate'], row["buySell"])
+                key = (symbol, 'Call', row["tradePrice"], row["expiry"], row['accountId'], row['tradeDate'], row["buySell"])
                 stock_sales[key] = {
-                    "sold_price": row["tradePrice"],  
-                    "quantity": row["quantity"] ,
+                    "sold_price": row["tradePrice"],
+                    "quantity": row["quantity"],
                     "tradeDate": row["tradeDate"],
-                    "number_of_sold_contract": row["quantity"] ,
+                    "number_of_sold_contract": row["quantity"],
                     "net_sold_cost": row["total_premium"]
                 }
 
+        # --- detect credit spreads among option_opens ---
+        # Strategy:
+        # For a given (symbol, putCall, expiry, accountId, tradeDate),
+        # if we have exactly two legs with same abs(quantity) and opposite buySell (SELL + BUY),
+        # treat it as a spread: short leg = SELL, long leg = BUY.
+        used_open_indices = set()
+        for i, r1 in enumerate(option_opens):
+            if i in used_open_indices:
+                continue
+            for j in range(i+1, len(option_opens)):
+                if j in used_open_indices:
+                    continue
+                r2 = option_opens[j]
+                # matching keys for candidate spread
+                if (
+                    r1['symbol'] == r2['symbol'] and
+                    r1['putCall'] == r2['putCall'] and
+                    r1['expiry'] == r2['expiry'] and
+                    r1['accountId'] == r2['accountId'] and
+                    r1['tradeDate'] == r2['tradeDate'] and
+                    abs(r1['quantity']) == abs(r2['quantity']) and
+                    set([r1['buySell'], r2['buySell']]) == set(['SELL', 'BUY'])
+                ):
+                    # We have a spread open
+                    short_leg = r1 if r1['buySell'] == 'SELL' else r2
+                    long_leg = r1 if r1['buySell'] == 'BUY' else r2
+                    contracts = int(abs(short_leg['quantity']))
+                    net_premium = short_leg['total_premium'] + long_leg['total_premium']  # premium collected (negative) + paid (maybe positive)
+                    short_strike = short_leg['strike']
+                    long_strike = long_leg['strike']
+                    # determine spread width and max loss
+                    spread_width = abs(short_strike - long_strike)
+                    max_loss = (spread_width * 100 * contracts) + net_premium  # net_premium is typically negative (collected) so this reduces max loss
+                    # ensure positive max_loss
+                    max_loss = abs(max_loss) if max_loss != 0 else (spread_width * 100 * contracts)
+                    # ROI as percentage of max_loss paid: how much we collected vs what we can lose
+                    if max_loss > 0:
+                        roi_pct = (abs(net_premium) / max_loss) * 100
+                    else:
+                        roi_pct = 0.0
 
-        # Update processed trades with buybacks, rolls, assignments, early exercises, and P/L
+                    key = (short_leg['symbol'], short_leg['putCall'], f"SPREAD_{short_strike}_{long_strike}", short_leg['expiry'], short_leg['accountId'], short_leg['tradeDate'], 'SPREAD')
+                    processed_trades[key] = {
+                        'accountId': short_leg['accountId'],
+                        "symbol": short_leg['symbol'],
+                        "callorPut": short_leg['putCall'],
+                        "buySell": "SPREAD",
+                        "trade_open_date": short_leg['tradeDate'],
+                        "expiry_date": short_leg['expiry'],
+                        "strike_price": short_strike,  # short strike
+                        "long_leg_strike": long_strike,
+                        "spread_width": spread_width,
+                        "number_of_contracts_sold": -contracts,  # negative to indicate sold quantity similar to your original
+                        "premium_collected": net_premium,
+                        "short_leg_premium": short_leg['total_premium'],
+                        "long_leg_premium": long_leg['total_premium'],
+                        "net_buyback_price": None,
+                        "number_of_buyback": None,
+                        "buyback_date": None,
+                        "net_premium": net_premium,
+                        "assign_price_per_share": None,
+                        "assign_quantity": None,
+                        "number_of_assign_contract": None,
+                        "assign_date": None,
+                        "net_assign_cost": None,
+                        "sold_price_per_share": None,
+                        "sold_quantity": None,
+                        "number_of_sold_contract": None,
+                        "sold_date": None,
+                        "net_sold_cost": None,
+                        "close_date": None,
+                        "ROI": round(roi_pct, 2),
+                        "status": "OPEN",
+                        "max_loss": max_loss,
+                        "collateral_used": max_loss
+                    }
+                    used_open_indices.add(i)
+                    used_open_indices.add(j)
+                    break
+
+        # Any remaining single-leg option opens (not part of detected spreads) -> create same as original behavior
+        for idx, r in enumerate(option_opens):
+            if idx in used_open_indices:
+                continue
+            key = (r["symbol"], r["putCall"], r["strike"], r["expiry"], r['accountId'], r['tradeDate'], r["buySell"])
+            processed_trades[key] ={
+                'accountId': r['accountId'],
+                "symbol": r["symbol"],
+                "callorPut": r["putCall"],
+                "buySell": r["buySell"],
+                "trade_open_date": r["tradeDate"],
+                "expiry_date": r["expiry"],
+                "strike_price": r["strike"],
+                "number_of_contracts_sold": r["quantity"],
+                "premium_collected": r["total_premium"],
+                "net_buyback_price": None,
+                "number_of_buyback": None,
+                "buyback_date": None,
+                "net_premium": r["total_premium"],
+                "assign_price_per_share": None,
+                "assign_quantity": None,
+                "number_of_assign_contract": None,
+                "assign_date": None,
+                "net_assign_cost": None,
+                "sold_price_per_share": None,
+                "sold_quantity": None,
+                "number_of_sold_contract": None,
+                "sold_date": None,
+                "net_sold_cost": None,
+                "close_date": None,
+                "ROI": None,
+                "status": "OPEN"
+            }
+
+        # Process option_closes -> try to close spreads first, then single legs
+        used_close_indices = set()
+        for i, r1 in enumerate(option_closes):
+            if i in used_close_indices:
+                continue
+            for j in range(i+1, len(option_closes)):
+                if j in used_close_indices:
+                    continue
+                r2 = option_closes[j]
+                if (
+                    r1['symbol'] == r2['symbol'] and
+                    r1['putCall'] == r2['putCall'] and
+                    r1['expiry'] == r2['expiry'] and
+                    r1['accountId'] == r2['accountId'] and
+                    r1['tradeDate'] == r2['tradeDate'] and
+                    abs(r1['quantity']) == abs(r2['quantity']) and
+                    set([r1['buySell'], r2['buySell']]) == set(['SELL', 'BUY'])
+                ):
+                    # This is a close of a spread (both legs closed same day)
+                    short_leg = r1 if r1['buySell'] == 'SELL' else r2
+                    long_leg = r1 if r1['buySell'] == 'BUY' else r2
+                    contracts = int(abs(short_leg['quantity']))
+                    net_close_premium = short_leg['total_premium'] + long_leg['total_premium']
+                    short_strike = short_leg['strike']
+                    long_strike = long_leg['strike']
+                    # find matching open spread key
+                    spread_key = (short_leg['symbol'], short_leg['putCall'], f"SPREAD_{short_strike}_{long_strike}", short_leg['expiry'], short_leg['accountId'], short_leg['tradeDate'], 'SPREAD')
+                    if spread_key in processed_trades:
+                        proc = processed_trades[spread_key]
+                        proc['net_buyback_price'] = net_close_premium
+                        proc['number_of_buyback'] = contracts
+                        proc['buyback_date'] = short_leg['tradeDate']
+                        proc['close_date'] = short_leg['tradeDate']
+                        proc['status'] = "BOUGHT BACK"
+                        # recompute ROI relative to max_loss
+                        max_loss = proc.get('max_loss', (abs(short_strike - long_strike) * 100 * contracts))
+                        net_premium_open = proc.get('net_premium', 0.0)
+                        realized_pnl = -(net_premium_open + net_close_premium)  # negative of (collected + paid)
+                        # ROI as percent of required collateral (max_loss)
+                        proc['ROI'] = round((abs(realized_pnl) / max_loss) * 100, 2) if max_loss != 0 else 0.0
+                    else:
+                        # fallback: record a closing spread entry if no opening found
+                        key = (short_leg['symbol'], short_leg['putCall'], f"SPREAD_{short_strike}_{long_strike}", short_leg['expiry'], short_leg['accountId'], short_leg['tradeDate'], 'SPREAD_CLOSE')
+                        processed_trades[key] = {
+                            'accountId': short_leg['accountId'],
+                            "symbol": short_leg['symbol'],
+                            "callorPut": short_leg['putCall'],
+                            "buySell": "SPREAD_CLOSE",
+                            "trade_open_date": short_leg['tradeDate'],
+                            "expiry_date": short_leg['expiry'],
+                            "strike_price": short_strike,
+                            "long_leg_strike": long_strike,
+                            "spread_width": abs(short_strike - long_strike),
+                            "number_of_contracts_sold": None,
+                            "premium_collected": None,
+                            "short_leg_premium": short_leg['total_premium'],
+                            "long_leg_premium": long_leg['total_premium'],
+                            "net_buyback_price": net_close_premium,
+                            "number_of_buyback": contracts,
+                            "buyback_date": short_leg['tradeDate'],
+                            "net_premium": None,
+                            "close_date": short_leg['tradeDate'],
+                            "ROI": None,
+                            "status": "BOUGHT BACK",
+                            "max_loss": abs(short_strike - long_strike) * 100 * contracts,
+                            "collateral_used": abs(short_strike - long_strike) * 100 * contracts
+                        }
+                    used_close_indices.add(i)
+                    used_close_indices.add(j)
+                    break
+
+        # Any remaining closes for single legs -> treat as buybacks mapped to single-leg opens
+        for idx, r in enumerate(option_closes):
+            if idx in used_close_indices:
+                continue
+            # try to find matching open single-leg
+            key = (r["symbol"], r["putCall"], r["strike"], r["expiry"], r['accountId'], r['tradeDate'], r["buySell"])
+            # note: for close, buySell may be 'BUY' (closing a prior SELL open). We'll search processed_trades ignoring buySell sign
+            match_key = None
+            for pt_key in processed_trades.keys():
+                # match on symbol, putcall, strike, expiry, accountId
+                try:
+                    if (
+                        pt_key[0] == r['symbol'] and
+                        pt_key[1] == r['putCall'] and
+                        float(pt_key[2]) == float(r['strike']) and
+                        pt_key[3] == r['expiry'] and
+                        pt_key[4] == r['accountId']
+                    ):
+                        match_key = pt_key
+                        break
+                except Exception:
+                    continue
+            if match_key:
+                proc = processed_trades[match_key]
+                proc["net_buyback_price"] = r["total_premium"]
+                proc["number_of_buyback"] = r["quantity"]
+                proc["buyback_date"] = r["tradeDate"]
+                proc["close_date"] = r["tradeDate"]
+                proc["status"] = "BOUGHT BACK"
+                # ROI using original formula (approximate)
+                try:
+                    proc["net_premium"] = proc.get("net_premium", 0.0) + r["total_premium"]
+                    proc["ROI"] = (proc["net_premium"] / (proc["strike_price"] * abs(proc["number_of_buyback"]) * 100)) * 100
+                except Exception:
+                    proc["ROI"] = None
+
+        # Now incorporate assigned stocks and stock sales into processed_trades similar to your original logic
+        # (Re-use your existing mapping logic)
         partial_trades = {}
-        for trade_key in processed_trades:
+        for trade_key in list(processed_trades.keys()):
             trade = processed_trades[trade_key]
 
-            assigned_stocks_key = find_matching_key(trade_key,assigned_stocks)
-            stock_sales_key = find_matching_key(trade_key,stock_sales)
-            buybacks_key = find_matching_key(trade_key,buybacks)    
-
-            # Add buyback price if it exists
-            if buybacks_key:
-                
-                # if abs(buybacks[buybacks_key]['number_of_buyback']) != abs(trade['number_of_contracts_sold']):
-                #     left_trades = trade.copy()
-                #     left_trades['number_of_contracts_sold'] = trade['number_of_contracts_sold'] + buybacks[buybacks_key]['number_of_buyback']
-                #     left_trades['premium_collected'] = (trade['premium_collected'] / abs(trade['number_of_contracts_sold'])) * abs(left_trades['number_of_contracts_sold'])
-                #     left_trades['net_premium'] = left_trades['premium_collected']
-                #     partial_trades[trade_key] = left_trades
-
-                #     trade["premium_collected"] = (trade["premium_collected"] / abs(trade["number_of_contracts_sold"])) * (abs(buybacks[buybacks_key]['number_of_buyback']))
-                #     trade['number_of_contracts_sold'] = buybacks[buybacks_key]['number_of_buyback'] * -1
-                
-                
-                trade["net_buyback_price"] = buybacks[buybacks_key]['total_premium']
-                trade["net_premium"] = trade["premium_collected"] + buybacks[buybacks_key]['total_premium']
-                trade["number_of_buyback"] = buybacks[buybacks_key]['number_of_buyback']
-                trade["buyback_date"] = buybacks[buybacks_key]['buyback_date']
-                trade["close_date"] = buybacks[buybacks_key]['buyback_date']
-                trade["status"] = "BOUGHT BACK"
-                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_buyback"]) * 100)) * 100
-                
-                buybacks.pop(buybacks_key)
-
+            assigned_stocks_key = find_matching_key(trade_key, assigned_stocks)
+            stock_sales_key = find_matching_key(trade_key, stock_sales)
+            # buybacks handled earlier for spreads/single legs as we populated processed_trades directly
 
             if assigned_stocks_key:
-                trade["assign_price_per_share"] = assigned_stocks[assigned_stocks_key]['assign_price']
-                trade["assign_quantity"] = assigned_stocks[assigned_stocks_key]['quantity']
-                trade["assign_date"] = assigned_stocks[assigned_stocks_key]['tradeDate']
-                trade["number_of_assign_contract"] = assigned_stocks[assigned_stocks_key]['number_of_assign_contract']/100
-                trade["net_assign_cost"] = assigned_stocks[assigned_stocks_key]['net_assign_cost']
-                trade["close_date"] = assigned_stocks[assigned_stocks_key]['tradeDate']
+                a = assigned_stocks[assigned_stocks_key]
+                trade["assign_price_per_share"] = a['assign_price']
+                trade["assign_quantity"] = a['quantity']
+                trade["assign_date"] = a['tradeDate']
+                trade["number_of_assign_contract"] = a['number_of_assign_contract']/100 if a.get('number_of_assign_contract') else None
+                trade["net_assign_cost"] = a['net_assign_cost']
+                trade["close_date"] = a['tradeDate']
                 trade["status"] = "ASSIGNED"
                 trade["ROI"] = 0
-                
                 assigned_stocks.pop(assigned_stocks_key)
-            
+
             if stock_sales_key:
-                trade["sold_price_per_share"] = stock_sales[stock_sales_key]['sold_price']
-                trade["sold_quantity"] = stock_sales[stock_sales_key]['quantity']
-                trade["sold_date"] = stock_sales[stock_sales_key]['tradeDate']
-                trade["number_of_sold_contract"] = stock_sales[stock_sales_key]['number_of_sold_contract']/100
-                trade["net_sold_cost"] = stock_sales[stock_sales_key]['net_sold_cost']
-                trade["close_date"] = stock_sales[stock_sales_key]['tradeDate']
+                s = stock_sales[stock_sales_key]
+                trade["sold_price_per_share"] = s['sold_price']
+                trade["sold_quantity"] = s['quantity']
+                trade["sold_date"] = s['tradeDate']
+                trade["number_of_sold_contract"] = s.get('number_of_sold_contract')/100 if s.get('number_of_sold_contract') else None
+                trade["net_sold_cost"] = s['net_sold_cost']
+                trade["close_date"] = s['tradeDate']
                 trade["status"] = "TAKEN AWAY"
                 trade["ROI"] = 0
-                
                 stock_sales.pop(stock_sales_key)
 
-            today = pd.Timestamp.today().normalize()
-            today = today.date()    
+            # expiry handling for open trades
+            today = pd.Timestamp.today().normalize().date()
+            if trade.get("expiry_date") and trade["expiry_date"] != "":
+                try:
+                    expiry_date = trade["expiry_date"]
+                    if isinstance(expiry_date, pd.Timestamp):
+                        expiry_dt = expiry_date.date()
+                    elif isinstance(expiry_date, datetime.date):
+                        expiry_dt = expiry_date
+                    else:
+                        expiry_dt = pd.to_datetime(expiry_date).date()
+                except Exception:
+                    expiry_dt = None
 
-            if trade["expiry_date"] < today and trade["status"] == "OPEN":
-                trade["status"] = "EXPIRED"
-                trade["close_date"] = trade["expiry_date"]
-                trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
+                if expiry_dt and expiry_dt < today and trade.get("status") == "OPEN":
+                    trade["status"] = "EXPIRED"
+                    trade["close_date"] = trade["expiry_date"]
+                    # For spreads, ROI already computed; for single legs compute similar to original
+                    try:
+                        trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
+                    except Exception:
+                        trade["ROI"] = None
 
-        for trade_key in partial_trades:
-            trade = partial_trades[trade_key]
-            trade["status"] = "EXPIRED"
-            trade["close_date"] = trade["expiry_date"]
-            trade["ROI"] = (trade["net_premium"] / (trade["strike_price"] * abs(trade["number_of_contracts_sold"]) * 100)) * 100
-
-
-
+        # Any remaining assigned_stocks or stock_sales that didn't match opens -> add as standalone records
         for key, value in assigned_stocks.items():
             processed_trades[key] ={
                     'accountId': key[4],
@@ -299,15 +488,15 @@ def process_wheel_trades(df):
                     "net_premium": None,
                     "assign_price_per_share": value["assign_price"],
                     "assign_quantity": value["number_of_assign_contract"],
-                    "number_of_assign_contract":None,
+                    "number_of_assign_contract": None,
                     "assign_date": value["tradeDate"],
                     "net_assign_cost": value["net_assign_cost"],
                     "sold_price_per_share": None,
                     "sold_quantity": None,
                     "number_of_sold_contract": None,
-                    "net_sold_cost":None,
+                    "net_sold_cost": None,
                     "sold_date": None,
-                    "close_date":value["tradeDate"],
+                    "close_date": value["tradeDate"],
                     'status': "BOUGHT STOCK"
                 }
 
@@ -328,58 +517,71 @@ def process_wheel_trades(df):
                     "net_premium": None,
                     "assign_price_per_share": None,
                     "assign_quantity": None,
-                    "number_of_assign_contract":None,
+                    "number_of_assign_contract": None,
                     "assign_date": None,
                     "net_assign_cost": None,
                     "sold_price_per_share": value['sold_price'],
                     "sold_quantity": value['quantity'],
                     "number_of_sold_contract": None,
-                    "net_sold_cost":value['net_sold_cost'],
+                    "net_sold_cost": value['net_sold_cost'],
                     "sold_date": value['tradeDate'],
-                    "close_date":value['tradeDate'],
+                    "close_date": value['tradeDate'],
                     'status': "SOLD STOCK"
                 }
 
-        df = pd.DataFrame(processed_trades).transpose()
+        # final dataframe assembly and formatting
+        df_out = pd.DataFrame(processed_trades).transpose()
 
-        # add partial_trades to the df
-        if partial_trades:
-            partial_df = pd.DataFrame(partial_trades).transpose()
-            df = pd.concat([df, partial_df], ignore_index=True)
+        df_out = df_out.fillna(0)
+        df_out = df_out.reset_index(drop=True)
 
-        df = df.fillna(0)
-        df = df.reset_index()
-        # is open trade
+        # ensure numeric conversions and rounding similar to your original
+        df_out['net_sold_cost'] = pd.to_numeric(df_out.get('net_sold_cost', pd.Series([])), errors='coerce').fillna(0.0).astype(float) if 'net_sold_cost' in df_out.columns else 0.0
+        df_out['net_assign_cost'] = pd.to_numeric(df_out.get('net_assign_cost', pd.Series([])), errors='coerce').fillna(0.0).astype(float) if 'net_assign_cost' in df_out.columns else 0.0
+        df_out['net_premium'] = pd.to_numeric(df_out.get('net_premium', pd.Series([])), errors='coerce').fillna(0.0).astype(float)
+        df_out['net_premium'] = df_out['net_premium'].apply(lambda x: round(x, 2))
+        if 'ROI' in df_out.columns:
+            df_out['ROI'] = df_out['ROI'].apply(lambda x: round(x, 2) if pd.notnull(x) else x)
 
-        df['net_sold_cost'] = pd.to_numeric(df['net_sold_cost'], errors='coerce').fillna(0.0).astype(float)
-        df['net_assign_cost'] = pd.to_numeric(df['net_assign_cost'], errors='coerce').fillna(0.0).astype(float)
-        df['net_premium'] = pd.to_numeric(df['net_premium'], errors='coerce').fillna(0.0).astype(float)
-        df['net_premium'] = df['net_premium'].apply(lambda x: round(x, 2))
-        df['ROI'] = df['ROI'].apply(lambda x: round(x, 2))
-        
-        df['Colateral_used'] = np.where(
-            df['status'].isin(['OPEN', 'ASSIGNED']),
-            np.where(
-                df['close_date'] != 0,
-                df['assign_price_per_share'] * df['assign_quantity'],
-                np.where(
-                    df['buySell'] == 'SELL',
-                    df['number_of_contracts_sold'] * 100 * df['strike_price'] * -1  ,# adjust if needed,
-                    0
-                )
-                
-            ),
-            0
-        )
+        # compute Colateral_used in a more general way: prefer explicit collateral_used (for spreads), else fallback to existing logic
+        def compute_collateral(row):
+            if row.get('status') in ['OPEN', 'ASSIGNED'] and row.get('collateral_used'):
+                return row.get('collateral_used')
+            # fallback single-leg collateral
+            try:
+                if row.get('close_date') != 0:
+                    return row.get('assign_price_per_share', 0) * (row.get('assign_quantity', 0))
+                else:
+                    if row.get('buySell') == 'SELL' and row.get('number_of_contracts_sold'):
+                        return row.get('number_of_contracts_sold') * 100 * (row.get('strike_price') or 0) * -1
+            except Exception:
+                return 0
+            return 0
 
-        df = df[['accountId','symbol', 'callorPut', 'buySell', 'trade_open_date', 'expiry_date','strike_price', 
+        df_out['Colateral_used'] = df_out.apply(compute_collateral, axis=1)
+
+        # select / order columns similar to your original, adding new spread fields if present
+        cols = ['accountId','symbol', 'callorPut', 'buySell', 'trade_open_date', 'expiry_date','strike_price',
                    'number_of_contracts_sold', 'premium_collected','net_buyback_price', 'number_of_buyback', 'buyback_date', 'net_premium',
-                   'assign_price_per_share', 'assign_quantity','number_of_assign_contract', 'assign_date', 'net_assign_cost','sold_price_per_share', 
-                   'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date','ROI','status','Colateral_used']]
-        return df
+                   'assign_price_per_share', 'assign_quantity','number_of_assign_contract', 'assign_date', 'net_assign_cost','sold_price_per_share',
+                   'sold_quantity', 'number_of_sold_contract','net_sold_cost', 'sold_date', 'close_date','ROI','status','Colateral_used']
+
+        # include spread-specific columns if present
+        extra = ['long_leg_strike','spread_width','short_leg_premium','long_leg_premium','max_loss','collateral_used']
+        for e in extra:
+            if e in df_out.columns and e not in cols:
+                cols.insert(cols.index('net_premium')+1, e)
+
+        # keep only available columns
+        cols = [c for c in cols if c in df_out.columns]
+        df_out = df_out[cols]
+
+        return df_out
+
     except Exception as e:
         logging.error(f"Error processing wheel trades: {e}")
         raise
+
 
 def process_trade_data(email,token=None,broker_name=None,start_date=None,end_date=None,grouping='month'):
     try:
