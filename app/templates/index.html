@@ -583,7 +583,8 @@ function filterStocks(selectElement) {
                     'Last Week': [moment().subtract(1, 'week').startOf('week'), moment().subtract(1, 'week').endOf('week')],
                     'This Month': [moment().startOf('month'), moment().endOf('month')],
                     'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')],
-                    'Last 7 Days': [moment().subtract(6, 'days'), moment()]
+                    'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                    "year to date": [moment().startOf('year'), moment()]
                 },
                 startDate: inceptionStart,
                 endDate: today
